@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Forum</title>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Forum</h1>
+  <form hx-post="/post" hx-target="#posts" hx-swap="outerHTML">
+    <input type="text" name="content" required>
+    <button type="submit">Post</button>
+  </form>
+  <div id="posts">
+    {% for post in posts %}
+      <p>{{ post.content }}</p>
+    {% endfor %}
+  </div>
+  
+  <script>
+    const ws = new WebSocket("ws://localhost:8000/ws");
+    ws.onmessage = function(event) {
+      const post = document.createElement("p");
+      post.textContent = event.data;
+      document.getElementById("posts").appendChild(post);
+    };
+  </script>
+  
+</body>
+</html>
