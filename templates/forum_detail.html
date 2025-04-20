@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - {{ forum.name }}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Forum Detail -->
+    <section class="forum-detail">
+      <div class="forum-breadcrumb">
+        <a href="/forum">Forums</a> &gt; 
+        <a href="/forum/private">Private Forums</a> &gt; 
+        <span>{{ forum.name }}</span>
+      </div>
+      
+      <div class="forum-header">
+        <h2 class="forum-title">{{ forum.name }}</h2>
+        {% if current_user %}
+          <a href="/forum/{{ forum.id }}/new-thread" class="btn">
+            <i class="fas fa-plus"></i> New Thread
+          </a>
+        {% else %}
+          <a href="/login?next=/forum/{{ forum.id }}/new-thread" class="btn">
+            <i class="fas fa-sign-in-alt"></i> Login to Post
+          </a>
+        {% endif %}
+      </div>
+      
+      <div class="forum-description">
+        <p>{{ forum.description }}</p>
+      </div>
+      
+      <!-- Threads List -->
+      <div class="threads-list">
+        {% if threads %}
+          <div class="thread-header">
+            <div class="thread-title-col">Thread</div>
+            <div class="thread-author-col">Author</div>
+            <div class="thread-stats-col">Stats</div>
+            <div class="thread-last-post-col">Last Post</div>
+          </div>
+          
+          {% for thread in threads %}
+            <div class="thread-item {% if thread.is_sticky %}sticky{% endif %} {% if thread.is_locked %}locked{% endif %}">
+              <div class="thread-title-col">
+                {% if thread.is_sticky %}
+                  <span class="thread-icon sticky-icon" title="Sticky Thread">
+                    <i class="fas fa-thumbtack"></i>
+                  </span>
+                {% endif %}
+                
+                {% if thread.is_locked %}
+                  <span class="thread-icon locked-icon" title="Locked Thread">
+                    <i class="fas fa-lock"></i>
+                  </span>
+                {% endif %}
+                
+                <a href="/thread/{{ thread.id }}" class="thread-title">{{ thread.title }}</a>
+                <div class="thread-created">
+                  {{ thread.created_at.strftime('%b %d, %Y') }}
+                </div>
+              </div>
+              
+              <div class="thread-author-col">
+                <div class="thread-author">
+                  <span class="author-name">{{ thread.author.username }}</span>
+                </div>
+              </div>
+              
+              <div class="thread-stats-col">
+                <div class="thread-stats">
+                  <div class="thread-replies">
+                    <span class="stat-label">Replies:</span>
+                    <span class="stat-value">{{ thread.posts|length - 1 if thread.posts|length > 0 else 0 }}</span>
+                  </div>
+                  <div class="thread-views">
+                    <span class="stat-label">Views:</span>
+                    <span class="stat-value">{{ thread.views }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="thread-last-post-col">
+                {% if thread.posts|length > 0 %}
+                  {% set last_post = thread.posts|sort(attribute='created_at')|last %}
+                  <div class="thread-last-post">
+                    <div class="last-post-author">
+                      by {{ last_post.author.username }}
+                    </div>
+                    <div class="last-post-time">
+                      {{ last_post.created_at.strftime('%b %d, %Y %H:%M') }}
+                    </div>
+                  </div>
+                {% else %}
+                  <div class="thread-last-post">
+                    <div class="last-post-author">
+                      by {{ thread.author.username }}
+                    </div>
+                    <div class="last-post-time">
+                      {{ thread.created_at.strftime('%b %d, %Y %H:%M') }}
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="no-threads">
+            <p>No threads have been created in this forum yet.</p>
+            {% if current_user %}
+              <a href="/forum/{{ forum.id }}/new-thread" class="btn">
+                <i class="fas fa-plus"></i> Create the First Thread
+              </a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  </main>
+
+  {% include 'includes/footer.html' %}
+</body>
+</html>

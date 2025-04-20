@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - Site Settings</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <section class="admin-panel">
+      <div class="admin-header">
+        <h2><i class="fas fa-cogs"></i> Site Settings</h2>
+        <div class="admin-actions">
+          <a href="/admin" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+      </div>
+
+      <div class="settings-container">
+          <div class="settings-tabs">
+            <button type="button" class="settings-tab active" data-tab="general">General</button>
+            <button type="button" class="settings-tab" data-tab="appearance">Appearance</button>
+            <button type="button" class="settings-tab" data-tab="forum">Forum Settings</button>
+            <button type="button" class="settings-tab" data-tab="security">Security</button>
+            <button type="button" class="settings-tab" data-tab="advanced">Advanced</button>
+          </div>
+
+          <div class="settings-content">
+            <!-- Settings Form JavaScript -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching
+    const tabs = document.querySelectorAll('.settings-tab');
+    const panels = document.querySelectorAll('.settings-panel');
+    
+    tabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        // Update active tab
+        tabs.forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Show corresponding panel
+        const targetPanel = this.getAttribute('data-tab');
+        panels.forEach(panel => {
+          panel.classList.remove('active');
+          if (panel.id === targetPanel) {
+            panel.classList.add('active');
+          }
+        });
+        
+        // Update URL parameter without page reload
+        const url = new URL(window.location);
+        url.searchParams.set('tab', targetPanel);
+        window.history.pushState({}, '', url);
+      });
+    });
+    
+    // Set active tab from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+    if (activeTab) {
+      const tab = document.querySelector(`.settings-tab[data-tab='${activeTab}']`);
+      if (tab) {
+        tab.click();
+      }
+    }
+    
+    // Form submission
+    const forms = document.querySelectorAll('.settings-form');
+    forms.forEach(form => {
+      form.addEventListener('submit', function(e) {
+        const section = this.getAttribute('data-section');
+        const sectionInput = document.createElement('input');
+        sectionInput.type = 'hidden';
+        sectionInput.name = 'section';
+        sectionInput.value = section;
+        this.appendChild(sectionInput);
+      });
+    });
+  });
+</script>
+
+<!-- General Settings Tab -->
+            <div id="general" class="settings-panel active">
+              <form class="settings-form" action="/admin/settings/save" method="post" data-section="general">
+                <h3>General Settings</h3>
+              </div>
+              
+              <div class="form-group">
+                <label for="site_description">Site Description</label>
+                <textarea id="site_description" name="site_description" rows="3">{{ settings.site_description if settings else 'CottageWare Forums and Community' }}</textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="contact_email">Contact Email</label>
+                <input type="email" id="contact_email" name="contact_email" value="{{ settings.contact_email if settings else 'admin@cottageware.com' }}">
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="items_per_page">Items Per Page</label>
+                  <input type="number" id="items_per_page" name="items_per_page" min="5" max="100" value="{{ settings.items_per_page if settings else '20' }}">
+                </div>
+                
+                <div class="form-group">
+                  <label for="timezone">Default Timezone</label>
+                  <select id="timezone" name="timezone">
+                    <option value="UTC" {% if not settings or settings.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                    <option value="America/New_York" {% if settings and settings.timezone == 'America/New_York' %}selected{% endif %}>Eastern Time (ET)</option>
+                    <option value="America/Chicago" {% if settings and settings.timezone == 'America/Chicago' %}selected{% endif %}>Central Time (CT)</option>
+                    <option value="America/Denver" {% if settings and settings.timezone == 'America/Denver' %}selected{% endif %}>Mountain Time (MT)</option>
+                    <option value="America/Los_Angeles" {% if settings and settings.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific Time (PT)</option>
+                    <option value="Europe/London" {% if settings and settings.timezone == 'Europe/London' %}selected{% endif %}>London (GMT/BST)</option>
+                    <option value="Europe/Paris" {% if settings and settings.timezone == 'Europe/Paris' %}selected{% endif %}>Central European Time</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="enable_registration" name="enable_registration" {% if not settings or settings.enable_registration %}checked{% endif %}>
+                <label for="enable_registration">Enable User Registration</label>
+              </div>
+            </div>
+            
+            <!-- Appearance Settings Tab -->
+            <div class="settings-panel" id="appearance-panel">
+              <h3>Appearance Settings</h3>
+              
+              <div class="form-group">
+                <label for="theme">Default Theme</label>
+                <select id="theme" name="theme">
+                  <option value="dark" {% if not settings or settings.theme == 'dark' %}selected{% endif %}>Dark Theme</option>
+                  <option value="light" {% if settings and settings.theme == 'light' %}selected{% endif %}>Light Theme</option>
+                  <option value="auto" {% if settings and settings.theme == 'auto' %}selected{% endif %}>Auto (System Preference)</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="primary_color">Primary Color</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="primary_color" name="primary_color" value="{{ settings.primary_color if settings else '#00a8ff' }}">
+                  <input type="text" class="color-value" value="{{ settings.primary_color if settings else '#00a8ff' }}">
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="secondary_color">Secondary Color</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="secondary_color" name="secondary_color" value="{{ settings.secondary_color if settings else '#6c757d' }}">
+                  <input type="text" class="color-value" value="{{ settings.secondary_color if settings else '#6c757d' }}">
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="logo">Site Logo</label>
+                <div class="logo-preview">
+                  <img src="{{ settings.logo if settings and settings.logo else '/content/site-immagery/logo-transparent.svg' }}" alt="Site Logo" id="logo-preview-img">
+                </div>
+                <input type="file" id="logo" name="logo" accept="image/*">
+                <div class="form-help">Recommended size: 200x200px, SVG or PNG with transparency</div>
+              </div>
+              
+              <div class="form-group">
+                <label for="favicon">Favicon</label>
+                <div class="favicon-preview">
+                  <img src="{{ settings.favicon if settings and settings.favicon else '/content/site-immagery/logo-transparent.svg' }}" alt="Favicon" id="favicon-preview-img">
+                </div>
+                <input type="file" id="favicon" name="favicon" accept="image/png,image/x-icon,image/svg+xml">
+                <div class="form-help">Recommended size: 32x32px, PNG or ICO format</div>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="show_breadcrumbs" name="show_breadcrumbs" {% if not settings or settings.show_breadcrumbs %}checked{% endif %}>
+                <label for="show_breadcrumbs">Show Breadcrumb Navigation</label>
+              </div>
+            </div>
+            
+            <!-- Forum Settings Tab -->
+            <div class="settings-panel" id="forum-panel">
+              <h3>Forum Settings</h3>
+              
+              <div class="form-group">
+                <label for="guest_view_forums">Guest Permissions</label>
+                <select id="guest_view_forums" name="guest_view_forums">
+                  <option value="all" {% if not settings or settings.guest_view_forums == 'all' %}selected{% endif %}>View All Forums</option>
+                  <option value="public" {% if settings and settings.guest_view_forums == 'public' %}selected{% endif %}>View Public Forums Only</option>
+                  <option value="none" {% if settings and settings.guest_view_forums == 'none' %}selected{% endif %}>No Forums (Login Required)</option>
+                </select>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="min_post_length">Minimum Post Length</label>
+                  <input type="number" id="min_post_length" name="min_post_length" min="1" max="100" value="{{ settings.min_post_length if settings else '5' }}">
+                  <div class="form-help">Minimum character count for posts</div>
+                </div>
+                
+                <div class="form-group">
+                  <label for="max_post_length">Maximum Post Length</label>
+                  <input type="number" id="max_post_length" name="max_post_length" min="1000" max="50000" value="{{ settings.max_post_length if settings else '10000' }}">
+                  <div class="form-help">Maximum character count for posts</div>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="content_filter_level">Content Filter Level</label>
+                <select id="content_filter_level" name="content_filter_level">
+                  <option value="none" {% if settings and settings.content_filter_level == 'none' %}selected{% endif %}>None</option>
+                  <option value="low" {% if not settings or settings.content_filter_level == 'low' %}selected{% endif %}>Low (Filter Extreme Profanity)</option>
+                  <option value="medium" {% if settings and settings.content_filter_level == 'medium' %}selected{% endif %}>Medium (Most Profanity)</option>
+                  <option value="high" {% if settings and settings.content_filter_level == 'high' %}selected{% endif %}>High (Strict Filtering)</option>
+                </select>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="enable_signatures" name="enable_signatures" {% if not settings or settings.enable_signatures %}checked{% endif %}>
+                <label for="enable_signatures">Enable User Signatures</label>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="enable_avatars" name="enable_avatars" {% if not settings or settings.enable_avatars %}checked{% endif %}>
+                <label for="enable_avatars">Enable User Avatars</label>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="enable_markdown" name="enable_markdown" {% if not settings or settings.enable_markdown %}checked{% endif %}>
+                <label for="enable_markdown">Enable Markdown in Posts</label>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="allow_image_upload" name="allow_image_upload" {% if not settings or settings.allow_image_upload %}checked{% endif %}>
+                <label for="allow_image_upload">Allow Image Uploads in Posts</label>
+              </div>
+            </div>
+            
+            <!-- Security Settings Tab -->
+            <div class="settings-panel" id="security-panel">
+              <h3>Security Settings</h3>
+              
+              <div class="form-group">
+                <label for="session_timeout">Session Timeout (minutes)</label>
+                <input type="number" id="session_timeout" name="session_timeout" min="15" max="1440" value="{{ settings.session_timeout if settings else '1440' }}">
+                <div class="form-help">Time until user is automatically logged out (in minutes)</div>
+              </div>
+              
+              <div class="form-group">
+                <label for="login_attempts">Failed Login Attempts</label>
+                <input type="number" id="login_attempts" name="login_attempts" min="3" max="10" value="{{ settings.login_attempts if settings else '5' }}">
+                <div class="form-help">Number of failed attempts before temporary lockout</div>
+              </div>
+              
+              <div class="form-group">
+                <label for="lockout_time">Account Lockout Time (minutes)</label>
+                <input type="number" id="lockout_time" name="lockout_time" min="5" max="60" value="{{ settings.lockout_time if settings else '15' }}">
+                <div class="form-help">Duration of lockout after failed login attempts</div>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="enable_captcha" name="enable_captcha" {% if settings and settings.enable_captcha %}checked{% endif %}>
+                <label for="enable_captcha">Enable CAPTCHA on Registration</label>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="email_verification" name="email_verification" {% if not settings or settings.email_verification %}checked{% endif %}>
+                <label for="email_verification">Require Email Verification</label>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="enforce_password_strength" name="enforce_password_strength" {% if not settings or settings.enforce_password_strength %}checked{% endif %}>
+                <label for="enforce_password_strength">Enforce Strong Passwords</label>
+              </div>
+            </div>
+            
+            <!-- Advanced Settings Tab -->
+            <div class="settings-panel" id="advanced-panel">
+              <h3>Advanced Settings</h3>
+              
+              <div class="form-group">
+                <label for="maintenance_mode">Maintenance Mode</label>
+                <select id="maintenance_mode" name="maintenance_mode">
+                  <option value="off" {% if not settings or settings.maintenance_mode == 'off' %}selected{% endif %}>Off</option>
+                  <option value="on" {% if settings and settings.maintenance_mode == 'on' %}selected{% endif %}>On (Admins Only)</option>
+                  <option value="message" {% if settings and settings.maintenance_mode == 'message' %}selected{% endif %}>Custom Message</option>
+                </select>
+              </div>
+              
+              <div class="form-group" id="maintenance_message_group" style="display: {{ 'block' if settings and settings.maintenance_mode == 'message' else 'none' }}">
+                <label for="maintenance_message">Maintenance Message</label>
+                <textarea id="maintenance_message" name="maintenance_message" rows="3">{{ settings.maintenance_message if settings else 'The site is currently under maintenance. Please check back later.' }}</textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="log_level">Logging Level</label>
+                <select id="log_level" name="log_level">
+                  <option value="error" {% if settings and settings.log_level == 'error' %}selected{% endif %}>Error Only</option>
+                  <option value="warning" {% if not settings or settings.log_level == 'warning' %}selected{% endif %}>Warning & Error</option>
+                  <option value="info" {% if settings and settings.log_level == 'info' %}selected{% endif %}>Info, Warning & Error</option>
+                  <option value="debug" {% if settings and settings.log_level == 'debug' %}selected{% endif %}>Debug (Verbose)</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="cache_ttl">Cache Time-to-live (seconds)</label>
+                <input type="number" id="cache_ttl" name="cache_ttl" min="0" max="86400" value="{{ settings.cache_ttl if settings else '3600' }}">
+                <div class="form-help">0 disables caching, max 86400 (24 hours)</div>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="enable_api" name="enable_api" {% if settings and settings.enable_api %}checked{% endif %}>
+                <label for="enable_api">Enable API Access</label>
+              </div>
+              
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="debug_mode" name="debug_mode" {% if settings and settings.debug_mode %}checked{% endif %}>
+                <label for="debug_mode">Debug Mode</label>
+                <div class="form-help">Warning: Only enable in development environments</div>
+              </div>
+              
+              <div class="danger-zone">
+                <h4><i class="fas fa-exclamation-triangle"></i> Danger Zone</h4>
+                <div class="danger-actions">
+                  <button type="button" class="btn btn-danger" id="purge-cache-btn">
+                    <i class="fas fa-trash"></i> Purge Cache
+                  </button>
+                  <button type="button" class="btn btn-danger" id="regenerate-sitemap-btn">
+                    <i class="fas fa-sitemap"></i> Regenerate Sitemap
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Settings
+            </button>
+            <button type="reset" class="btn btn-secondary">
+              <i class="fas fa-undo"></i> Reset Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+  
+  {% include 'includes/footer.html' %}
+  
+  <script>
+    // Tab switching
+    const settingsTabs = document.querySelectorAll('.settings-tab');
+    const settingsPanels = document.querySelectorAll('.settings-panel');
+    
+    settingsTabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        // Update active tab
+        settingsTabs.forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Show corresponding panel
+        const tabId = this.getAttribute('data-tab');
+        settingsPanels.forEach(panel => {
+          panel.classList.remove('active');
+          if (panel.id === tabId + '-panel') {
+            panel.classList.add('active');
+          }
+        });
+      });
+    });
+    
+    // Maintenance mode toggle
+    const maintenanceMode = document.getElementById('maintenance_mode');
+    const messageGroup = document.getElementById('maintenance_message_group');
+    
+    if (maintenanceMode && messageGroup) {
+      maintenanceMode.addEventListener('change', function() {
+        messageGroup.style.display = this.value === 'message' ? 'block' : 'none';
+      });
+    }
+    
+    // Color picker sync
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    colorInputs.forEach(input => {
+      const textInput = input.parentElement.querySelector('.color-value');
+      
+      input.addEventListener('input', function() {
+        textInput.value = this.value;
+      });
+      
+      textInput.addEventListener('input', function() {
+        if (/^#[0-9A-F]{6}$/i.test(this.value)) {
+          input.value = this.value;
+        }
+      });
+      
+      textInput.addEventListener('blur', function() {
+        if (!/^#[0-9A-F]{6}$/i.test(this.value)) {
+          this.value = input.value;
+        }
+      });
+    });
+    
+    // Logo and favicon preview
+    const logoInput = document.getElementById('logo');
+    const logoPreview = document.getElementById('logo-preview-img');
+    
+    if (logoInput && logoPreview) {
+      logoInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            logoPreview.src = e.target.result;
+          };
+          reader.readAsDataURL(this.files[0]);
+        }
+      });
+    }
+    
+    const faviconInput = document.getElementById('favicon');
+    const faviconPreview = document.getElementById('favicon-preview-img');
+    
+    if (faviconInput && faviconPreview) {
+      faviconInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            faviconPreview.src = e.target.result;
+          };
+          reader.readAsDataURL(this.files[0]);
+        }
+      });
+    }
+    
+    // Danger zone buttons
+    const purgeCacheBtn = document.getElementById('purge-cache-btn');
+    if (purgeCacheBtn) {
+      purgeCacheBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to purge the site cache? This may temporarily slow down the site.')) {
+          fetch('/admin/settings/purge-cache', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+              alert(data.message || 'Cache purged successfully');
+            })
+            .catch(error => {
+              alert('Error purging cache: ' + error);
+            });
+        }
+      });
+    }
+    
+    const regenerateSitemapBtn = document.getElementById('regenerate-sitemap-btn');
+    if (regenerateSitemapBtn) {
+      regenerateSitemapBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to regenerate the sitemap?')) {
+          fetch('/admin/settings/regenerate-sitemap', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+              alert(data.message || 'Sitemap regenerated successfully');
+            })
+            .catch(error => {
+              alert('Error regenerating sitemap: ' + error);
+            });
+        }
+      });
+    }
+  </script>
+</body>
+</html>

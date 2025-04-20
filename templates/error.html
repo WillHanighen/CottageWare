@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - Error {{ status_code }}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <section class="error-container">
+      <div class="error-code">
+        <span>{{ status_code }}</span>
+      </div>
+      <div class="error-details">
+        <h2>{{ error_title }}</h2>
+        <p class="error-message">{{ error_message }}</p>
+        
+        {% if error_details %}
+        <div class="error-technical">
+          <h3>Technical Details</h3>
+          <pre>{{ error_details }}</pre>
+        </div>
+        {% endif %}
+        
+        <div class="error-actions">
+          <a href="/" class="btn"><i class="fas fa-home"></i> Return to Homepage</a>
+          <a href="javascript:history.back()" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Go Back</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  {% include 'includes/footer.html' %}
+
+  <script>
+    // Animation for error page
+    document.addEventListener('DOMContentLoaded', function() {
+      const errorCode = document.querySelector('.error-code');
+      const errorDetails = document.querySelector('.error-details');
+      
+      errorCode.classList.add('animate');
+      setTimeout(() => {
+        errorDetails.classList.add('animate');
+      }, 300);
+    });
+  </script>
+</body>
+</html>

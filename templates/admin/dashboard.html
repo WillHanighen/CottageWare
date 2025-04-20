@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - Admin Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <section class="admin-panel">
+      <div class="admin-header">
+        <h2><i class="fas fa-shield-alt"></i> Admin Dashboard</h2>
+        <p>Welcome, {{ current_user.username }}. Manage site content and settings here.</p>
+      </div>
+
+      <div class="admin-stats-container">
+        <div class="admin-stats">
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-users"></i></div>
+            <div class="stat-content">
+              <div class="stat-value">{{ user_count }}</div>
+              <div class="stat-label">Total Users</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-shopping-cart"></i></div>
+            <div class="stat-content">
+              <div class="stat-value">{{ product_count }}</div>
+              <div class="stat-label">Products</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-comments"></i></div>
+            <div class="stat-content">
+              <div class="stat-value">{{ post_count }}</div>
+              <div class="stat-label">Forum Posts</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+            <div class="stat-content">
+              <div class="stat-value">{{ thread_count }}</div>
+              <div class="stat-label">Forum Threads</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modules">
+        <div class="admin-module-row">
+          <div class="admin-module-card">
+            <div class="module-icon"><i class="fas fa-shopping-cart"></i></div>
+            <h3>Products</h3>
+            <p>Manage product listings, prices, and availability</p>
+            <a href="/admin/products" class="btn btn-primary">Manage Products</a>
+          </div>
+          
+          <div class="admin-module-card">
+            <div class="module-icon"><i class="fas fa-users"></i></div>
+            <h3>Users</h3>
+            <p>Manage user accounts, roles, and permissions</p>
+            <a href="/admin/users" class="btn btn-primary">Manage Users</a>
+          </div>
+        </div>
+        
+        <div class="admin-module-row">
+          <div class="admin-module-card">
+            <div class="module-icon"><i class="fas fa-comment-alt"></i></div>
+            <h3>Forums</h3>
+            <p>Manage categories, forums, and threads</p>
+            <a href="/admin/forums" class="btn btn-primary">Manage Forums</a>
+          </div>
+          
+          <div class="admin-module-card">
+            <div class="module-icon"><i class="fas fa-cog"></i></div>
+            <h3>Settings</h3>
+            <p>Configure site settings and preferences</p>
+            <a href="/admin/settings" class="btn btn-primary">Site Settings</a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="admin-recent-activity">
+        <h3><i class="fas fa-history"></i> Recent Activity</h3>
+        <div class="activity-list">
+          {% if recent_activities %}
+            {% for activity in recent_activities %}
+            <div class="activity-item">
+              <div class="activity-icon">
+                <i class="{{ activity.icon }}"></i>
+              </div>
+              <div class="activity-content">
+                <div class="activity-text">{{ activity.text }}</div>
+                <div class="activity-time">{{ activity.time }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-activity">No recent activity to display</div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+  </main>
+
+  {% include 'includes/footer.html' %}
+  
+  <script src="/static/js/admin.js"></script>
+</body>
+</html>

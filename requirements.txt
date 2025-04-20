@@ -6,3 +6,13 @@ aiofiles
 python-multipart
 websockets
 wsproto
+python-jose
+passlib
+bcrypt
+email-validator
+requests
+itsdangerous
+authlib
+httpx
+python-dotenv
+fastapi-sso

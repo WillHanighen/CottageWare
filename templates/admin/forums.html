@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - Admin Forums</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <section class="admin-panel">
+      <div class="admin-header">
+        <h2><i class="fas fa-comments"></i> Manage Forums</h2>
+        <div class="admin-actions">
+          <a href="/admin" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+          <div class="action-dropdown">
+            <button class="btn btn-primary"><i class="fas fa-plus"></i> Add New <i class="fas fa-caret-down"></i></button>
+            <div class="action-dropdown-menu">
+              <a href="/admin/forums/categories/new">New Category</a>
+              <a href="/admin/forums/new">New Forum</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-forums-section">
+        <div class="section-tabs">
+          <button class="tab-btn active" data-tab="categories">Categories</button>
+          <button class="tab-btn" data-tab="forums">Forums</button>
+          <button class="tab-btn" data-tab="threads">Threads</button>
+        </div>
+
+        <!-- Categories Tab -->
+        <div class="tab-content active" id="categories-tab">
+          <div class="category-management">
+            <div class="drag-instruction">
+              <i class="fas fa-info-circle"></i> Drag categories to reorder
+            </div>
+            
+            <div class="categories-list sortable">
+              {% if categories %}
+                {% for category in categories %}
+                <div class="category-item" data-id="{{ category.id }}">
+                  <div class="drag-handle"><i class="fas fa-grip-lines"></i></div>
+                  <div class="category-info">
+                    <h3>{{ category.name }}</h3>
+                    <p>{{ category.description }}</p>
+                  </div>
+                  <div class="category-meta">
+                    <span class="visibility-badge {{ 'public' if category.is_public else 'private' }}">
+                      {{ "Public" if category.is_public else "Private" }}
+                    </span>
+                    <span class="forums-count">
+                      {{ category.forums|length }} forum(s)
+                    </span>
+                  </div>
+                  <div class="category-actions">
+                    <a href="/admin/forums/categories/{{ category.id }}/edit" class="action-btn edit-btn" title="Edit">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="/admin/forums/categories/{{ category.id }}/toggle" class="action-btn toggle-btn" title="{{ 'Make Private' if category.is_public else 'Make Public' }}">
+                      <i class="fas fa-{{ 'eye-slash' if category.is_public else 'eye' }}"></i>
+                    </a>
+                    <button class="action-btn delete-btn" data-id="{{ category.id }}" data-type="category" title="Delete">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <div class="empty-state">
+                  <i class="fas fa-folder-open"></i>
+                  <p>No categories found</p>
+                  <a href="/admin/forums/categories/new" class="btn btn-primary">Create Category</a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Forums Tab -->
+        <div class="tab-content" id="forums-tab">
+          <div class="forums-management">
+            <div class="forums-filters">
+              <select id="category-filter">
+                <option value="all">All Categories</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+                {% endfor %}
+              </select>
+              <select id="visibility-filter">
+                <option value="all">All Visibility</option>
+                <option value="public">Public Only</option>
+                <option value="private">Private Only</option>
+              </select>
+            </div>
+            
+            <div class="forums-list">
+              {% if forums %}
+                {% for forum in forums %}
+                <div class="forum-item" data-id="{{ forum.id }}" data-category="{{ forum.category_id }}">
+                  <div class="forum-info">
+                    <h3>{{ forum.name }}</h3>
+                    <p>{{ forum.description }}</p>
+                    <div class="forum-meta">
+                      <span class="category-badge">{{ forum.category.name }}</span>
+                      <span class="access-badge level-{{ forum.access_level }}">
+                        {{ "Public" if forum.access_level == 0 else
+                           "Registered" if forum.access_level == 1 else
+                           "Customer" if forum.access_level == 2 else
+                           "Moderator" if forum.access_level == 3 else
+                           "Admin" if forum.access_level == 4 else
+                           "Owner" }}
+                      </span>
+                      <span class="visibility-badge {{ 'public' if forum.is_public else 'private' }}">
+                        {{ "Public" if forum.is_public else "Private" }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="forum-stats">
+                    <div class="stat">
+                      <span class="label">Threads</span>
+                      <span class="value">{{ forum.threads|length }}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="label">Posts</span>
+                      <span class="value">{{ forum.post_count }}</span>
+                    </div>
+                  </div>
+                  <div class="forum-actions">
+                    <a href="/admin/forums/{{ forum.id }}/edit" class="action-btn edit-btn" title="Edit">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="/admin/forums/{{ forum.id }}/toggle" class="action-btn toggle-btn" title="{{ 'Make Private' if forum.is_public else 'Make Public' }}">
+                      <i class="fas fa-{{ 'eye-slash' if forum.is_public else 'eye' }}"></i>
+                    </a>
+                    <button class="action-btn delete-btn" data-id="{{ forum.id }}" data-type="forum" title="Delete">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <div class="empty-state">
+                  <i class="fas fa-comments"></i>
+                  <p>No forums found</p>
+                  <a href="/admin/forums/new" class="btn btn-primary">Create Forum</a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Threads Tab -->
+        <div class="tab-content" id="threads-tab">
+          <div class="threads-management">
+            <div class="threads-search">
+              <input type="text" id="thread-search" placeholder="Search threads...">
+              <select id="forum-filter">
+                <option value="all">All Forums</option>
+                {% for forum in forums %}
+                <option value="{{ forum.id }}">{{ forum.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="threads-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Forum</th>
+                    <th>Posts</th>
+                    <th>Views</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if threads %}
+                    {% for thread in threads %}
+                    <tr data-forum="{{ thread.forum_id }}">
+                      <td>{{ thread.id }}</td>
+                      <td><a href="/thread/{{ thread.id }}" target="_blank">{{ thread.title }}</a></td>
+                      <td>{{ thread.author.username }}</td>
+                      <td>{{ thread.forum.name }}</td>
+                      <td>{{ thread.posts|length }}</td>
+                      <td>{{ thread.views }}</td>
+                      <td>{{ thread.created_at.strftime('%Y-%m-%d') }}</td>
+                      <td class="actions">
+                        <a href="/admin/threads/{{ thread.id }}/edit" class="action-btn edit-btn" title="Edit">
+                          <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="/admin/threads/{{ thread.id }}/pin" class="action-btn pin-btn" title="{{ 'Unpin' if thread.is_pinned else 'Pin' }}">
+                          <i class="fas fa-{{ 'thumbtack' if thread.is_pinned else 'thumbtack' }}"></i>
+                        </a>
+                        <button class="action-btn delete-btn" data-id="{{ thread.id }}" data-type="thread" title="Delete">
+                          <i class="fas fa-trash-alt"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  {% else %}
+                    <tr>
+                      <td colspan="8" class="no-threads">No threads found.</td>
+                    </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="pagination">
+              {% if total_pages > 1 %}
+                {% for i in range(1, total_pages + 1) %}
+                  <a href="/admin/forums?tab=threads&page={{ i }}" class="page-link {{ 'active' if i == page else '' }}">{{ i }}</a>
+                {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  {% include 'includes/footer.html' %}
+  
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal">
+    <div class="modal-content">
+      <h3 id="delete-modal-title">Confirm Deletion</h3>
+      <p id="delete-modal-message">Are you sure you want to delete this item? This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button id="confirm-delete" class="btn btn-danger">Delete</button>
+        <button id="cancel-delete" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Tab switching
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        // Update active tab button
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Show corresponding tab content
+        const tabId = this.getAttribute('data-tab');
+        tabContents.forEach(content => {
+          content.classList.remove('active');
+          if (content.id === tabId + '-tab') {
+            content.classList.add('active');
+          }
+        });
+        
+        // Update URL without refresh
+        const url = new URL(window.location);
+        url.searchParams.set('tab', tabId);
+        window.history.pushState({}, '', url);
+      });
+    });
+    
+    // Category filter for forums
+    const categoryFilter = document.getElementById('category-filter');
+    if (categoryFilter) {
+      categoryFilter.addEventListener('change', function() {
+        const selectedCategory = this.value;
+        const forumItems = document.querySelectorAll('.forum-item');
+        
+        forumItems.forEach(item => {
+          if (selectedCategory === 'all' || item.getAttribute('data-category') === selectedCategory) {
+            item.style.display = '';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      });
+    }
+    
+    // Visibility filter for forums
+    const visibilityFilter = document.getElementById('visibility-filter');
+    if (visibilityFilter) {
+      visibilityFilter.addEventListener('change', function() {
+        const selectedVisibility = this.value;
+        const forumItems = document.querySelectorAll('.forum-item');
+        
+        forumItems.forEach(item => {
+          if (selectedVisibility === 'all') {
+            item.style.display = '';
+          } else {
+            const visibilityBadge = item.querySelector('.visibility-badge');
+            if (visibilityBadge && visibilityBadge.classList.contains(selectedVisibility)) {
+              item.style.display = '';
+            } else {
+              item.style.display = 'none';
+            }
+          }
+        });
+      });
+    }
+    
+    // Forum filter for threads
+    const forumFilter = document.getElementById('forum-filter');
+    if (forumFilter) {
+      forumFilter.addEventListener('change', function() {
+        const selectedForum = this.value;
+        const threadRows = document.querySelectorAll('#threads-tab tbody tr');
+        
+        threadRows.forEach(row => {
+          if (selectedForum === 'all' || row.getAttribute('data-forum') === selectedForum) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+      });
+    }
+    
+    // Thread search
+    const threadSearch = document.getElementById('thread-search');
+    if (threadSearch) {
+      threadSearch.addEventListener('input', function() {
+        const searchValue = this.value.toLowerCase();
+        const threadRows = document.querySelectorAll('#threads-tab tbody tr');
+        
+        threadRows.forEach(row => {
+          const title = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+          const author = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+          
+          if (title.includes(searchValue) || author.includes(searchValue)) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+      });
+    }
+    
+    // Delete modal functionality
+    const modal = document.getElementById('delete-modal');
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    const confirmDelete = document.getElementById('confirm-delete');
+    const cancelDelete = document.getElementById('cancel-delete');
+    const modalTitle = document.getElementById('delete-modal-title');
+    const modalMessage = document.getElementById('delete-modal-message');
+    
+    let itemIdToDelete = null;
+    let itemTypeToDelete = null;
+    
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        itemIdToDelete = this.dataset.id;
+        itemTypeToDelete = this.dataset.type;
+        
+        // Set modal title and message based on item type
+        if (itemTypeToDelete === 'category') {
+          modalTitle.textContent = 'Delete Category';
+          modalMessage.textContent = 'Are you sure you want to delete this category? All forums and threads within it will also be deleted. This action cannot be undone.';
+        } else if (itemTypeToDelete === 'forum') {
+          modalTitle.textContent = 'Delete Forum';
+          modalMessage.textContent = 'Are you sure you want to delete this forum? All threads and posts within it will also be deleted. This action cannot be undone.';
+        } else if (itemTypeToDelete === 'thread') {
+          modalTitle.textContent = 'Delete Thread';
+          modalMessage.textContent = 'Are you sure you want to delete this thread? All posts within it will also be deleted. This action cannot be undone.';
+        }
+        
+        modal.style.display = 'flex';
+      });
+    });
+    
+    confirmDelete.addEventListener('click', function() {
+      if (itemIdToDelete && itemTypeToDelete) {
+        window.location.href = `/admin/forums/${itemTypeToDelete}s/${itemIdToDelete}/delete`;
+      }
+    });
+    
+    cancelDelete.addEventListener('click', function() {
+      modal.style.display = 'none';
+      itemIdToDelete = null;
+      itemTypeToDelete = null;
+    });
+    
+    window.addEventListener('click', function(event) {
+      if (event.target === modal) {
+        modal.style.display = 'none';
+        itemIdToDelete = null;
+        itemTypeToDelete = null;
+      }
+    });
+    
+    // Initialize with correct tab based on URL
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      
+      if (tabParam) {
+        const tabButton = document.querySelector(`.tab-btn[data-tab="${tabParam}"]`);
+        if (tabButton) {
+          tabButton.click();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

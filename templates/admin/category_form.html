@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - {{ "Edit" if category else "New" }} Category</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <section class="admin-panel">
+      <div class="admin-header">
+        <h2><i class="fas fa-{{ 'edit' if category else 'plus' }}"></i> {{ "Edit" if category else "Add New" }} Category</h2>
+        <div class="admin-actions">
+          <a href="/admin/forums" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Forums</a>
+        </div>
+      </div>
+
+      <div class="form-container">
+        <form method="post" action="/admin/forums/categories/save" class="category-form">
+          {% if category %}
+          <input type="hidden" name="category_id" value="{{ category.id }}">
+          {% endif %}
+          
+          <div class="form-group">
+            <label for="name">Category Name <span class="required">*</span></label>
+            <input type="text" id="name" name="name" value="{{ category.name if category else '' }}" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="4">{{ category.description if category else '' }}</textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="display_order">Display Order</label>
+            <input type="number" id="display_order" name="display_order" value="{{ category.order if category else 0 }}" min="0">
+            <div class="form-help">Lower numbers display first</div>
+          </div>
+          
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="is_visible" name="is_visible" {% if not category or category.is_public %}checked{% endif %}>
+            <label for="is_visible">Visible</label>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Category
+            </button>
+            <a href="/admin/forums" class="btn btn-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+  
+  {% include 'includes/footer.html' %}
+</body>
+</html>

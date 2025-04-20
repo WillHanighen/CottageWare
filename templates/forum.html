@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - Forum Discussions</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Forum Section -->
+    <section class="forum-container">
+      <!-- Shoutbox - Moved to top -->
+      <div class="shoutbox">
+        <div class="shoutbox-header">
+          <h3>SHOUTBOX</h3>
+        </div>
+        <div class="shoutbox-messages" id="shoutbox-messages">
+          {% for message in shoutbox_messages %}
+          <div class="shoutbox-message">
+            <div class="message-author">
+              <img src="{{ message.user.avatar_url or '/static/images/default-avatar.png' }}" alt="{{ message.user.username }}" class="message-avatar">
+              <span class="message-username">{{ message.user.username }}</span>
+            </div>
+            <div class="message-content">{{ message.message }}</div>
+            <div class="message-time">{{ message.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
+          </div>
+          {% endfor %}
+          {% if not shoutbox_messages %}
+          <div class="shoutbox-empty-message">No messages yet. Be the first to post!</div>
+          {% endif %}
+        </div>
+        <div class="shoutbox-form">
+          {% if current_user %}
+          <form id="shoutbox-form" action="javascript:void(0);">
+            <input type="text" id="shoutbox-input" placeholder="Write a message..." autocomplete="off">
+            <button type="submit"><i class="fas fa-paper-plane"></i></button>
+            <!-- Hidden field to store user ID for authentication -->
+            <input type="hidden" id="current-user-id" value="{{ current_user.id }}">
+            <input type="hidden" id="current-username" value="{{ current_user.username }}">
+          </form>
+          {% else %}
+          <div class="shoutbox-login-message">
+            <a href="/login?next=/forum">Login</a> or <a href="/register">Sign Up</a> to send messages in the shoutbox
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="forum-header">
+        <h2 class="forum-title">PUBLIC FORUMS</h2>
+        <div class="forum-actions">
+          {% if current_user and current_user.profile and current_user.profile.account_tier >= 2 %}
+          <a href="/forum/private" class="btn btn-secondary"><i class="fas fa-lock"></i> Private Forums</a>
+          {% endif %}
+          {% if current_user %}
+          <a href="#" class="btn post-thread-btn"><i class="fas fa-plus"></i> POST THREAD</a>
+          {% else %}
+          <a href="/login?next=/forum" class="btn"><i class="fas fa-sign-in-alt"></i> LOGIN TO POST</a>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Forum Categories -->
+      <div class="forum-categories">
+        <div class="category">
+          {% for category in categories %}
+          <div class="category-header">
+            <h3>{{ category.name }}</h3>
+          </div>
+          
+          <!-- Forums List -->
+          <div class="forums-list">
+            {% for forum in category.forums %}
+            <div class="forum-item">
+              <div class="forum-icon">
+                <i class="{{ forum.icon or 'fas fa-comments' }}"></i>
+              </div>
+              <div class="forum-info">
+                <h4><a href="/forum/{{ forum.id }}">{{ forum.name }}</a></h4>
+                <p>{{ forum.description }}</p>
+              </div>
+              <div class="forum-stats">
+                <div class="stat">
+                  <span class="label">Threads</span>
+                  <span class="value">{{ forum.threads|length }}</span>
+                </div>
+                <div class="stat">
+                  <span class="label">Posts</span>
+                  <span class="value">{{ forum.post_count }}</span>
+                </div>
+              </div>
+              <div class="forum-latest">
+                {% if forum.latest_thread %}
+                <div class="latest-title">Latest: <a href="/thread/{{ forum.latest_thread.id }}">{{ forum.latest_thread.title }}</a></div>
+                <div class="latest-time">{{ forum.latest_thread.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
+                <div class="latest-user">{{ forum.latest_thread.author.username }}</div>
+                {% else %}
+                <div class="latest-title">No threads yet</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+            {% if not category.forums %}
+            <div class="forum-empty">No forums available in this category.</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% if not categories %}
+          <div class="category-empty">
+            <h3>No public categories found</h3>
+            <p>Public forums will appear here once they are created by an administrator.</p>
+          </div>
+          {% endif %}
+          </div>
+        </div>
+        
+        <!-- Members Online -->
+        <div class="members-online">
+          <div class="members-header">
+            <h3>MEMBERS ONLINE</h3>
+          </div>
+          <div class="members-list" id="online-members-list">
+            <!-- Will be populated via WebSocket -->
+          </div>
+          <div class="members-stats" id="members-stats">
+            <p>Total: {{ total_online }} (members: {{ online_users_count }}, guests: {{ guest_count }})</p>
+          </div>
+        </div>
+        
+        <!-- Latest Posts -->
+        <div class="latest-posts">
+          <div class="latest-posts-header">
+            <h3>LATEST POSTS</h3>
+          </div>
+          <div class="latest-posts-list">
+            {% for thread in recent_threads %}
+            <div class="latest-post">
+              <div class="post-title"><a href="/thread/{{ thread.id }}">{{ thread.title }}</a></div>
+              <div class="post-meta">
+                <span class="post-author">{{ thread.author.username }}</span>
+                <span class="post-time">{{ thread.created_at.strftime('%m/%d/%Y %H:%M') }}</span>
+              </div>
+            </div>
+            {% endfor %}
+            {% if not recent_threads %}
+            <div class="latest-posts-empty">No recent posts available.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  {% include 'includes/footer.html' %}
+  
+  <!-- WebSocket Script -->
+  <script>
+    // WebSocket variables
+    let socket = null;
+    let socketReady = false;
+    let isConnecting = false; // Flag to prevent multiple connection attempts
+    let reconnectAttempts = 0;
+    let reconnectTimer = null;
+    let connectionTimer = null;
+    const RECONNECT_DELAY = 1000; // Start with 1 second
+    const MAX_RECONNECT_DELAY = 30000; // Cap at 30 seconds
+    const MAX_RECONNECT_ATTEMPTS = 10;
+    const CONNECTION_TIMEOUT = 15000; // Extended to 15 seconds timeout for connection
+    let pendingMessages = []; // Store messages that couldn't be sent due to connection issues
+
+    // Function to connect WebSocket
+    function connectWebSocket() {
+      // Prevent multiple connection attempts at the same time
+      if (isConnecting) {
+        console.log('[DEBUG] Connection attempt already in progress, skipping');
+        return;
+      }
+      
+      isConnecting = true;
+      console.log('[DEBUG] Starting WebSocket connection attempt');
+      
+      // Clear any existing connection timer
+      if (connectionTimer) {
+        clearTimeout(connectionTimer);
+        connectionTimer = null;
+      }
+      
+      // If this is a manual reconnection, reset the attempts counter
+      if (reconnectAttempts > 0 && reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.log('[DEBUG] Manual reconnection, resetting attempts counter');
+        reconnectAttempts = 0;
+      }
+      
+      // Give previous connection attempts time to complete
+      setTimeout(function() {
+        // Close existing socket if it exists
+        if (socket !== null) {
+          try {
+            // Only close if not already closed
+            if (socket.readyState !== WebSocket.CLOSED && socket.readyState !== WebSocket.CLOSING) {
+              console.log('[DEBUG] Closing existing WebSocket connection');
+              // Mark the socket as not ready before closing
+              socketReady = false;
+              socket.close();
+              
+              // Give the socket time to close before creating a new one
+              setTimeout(continueConnect, 300);
+            } else {
+              // Socket already closed, proceed immediately
+              continueConnect();
+            }
+          } catch (e) {
+            console.log('[DEBUG] Error closing existing socket:', e);
+            // Continue despite errors
+            continueConnect();
+          }
+        } else {
+          // No existing socket, proceed immediately
+          continueConnect();
+        }
+      }, 100);
+    }
+    
+    // Continue the connection process after handling the existing socket
+    function continueConnect() {
+      // Set to null to ensure garbage collection of any previous socket
+      socket = null;
+      
+      // Get access token from cookies
+      function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+      }
+      
+      const token = getCookie('access_token');
+      console.log('[DEBUG] Found access_token:', token ? 'yes (token exists)' : 'no');
+      
+      // WebSocket connection handling
+      let wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      let wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+      
+      // Get current user information from hidden fields
+      const currentUserId = document.getElementById('current-user-id')?.value;
+      const currentUsername = document.getElementById('current-username')?.value;
+      
+      // Build query parameters
+      const queryParams = [];
+      
+      // Add token if available
+      if (token) {
+        queryParams.push(`token=${encodeURIComponent(token)}`);
+        console.log('[DEBUG] Adding token to WebSocket URL');
+        console.log('[DEBUG] Token (truncated):', token.substring(0, 10) + '...');
+      } else {
+        console.log('[DEBUG] No token available for WebSocket authentication');
+      }
+      
+      // Add user information if available
+      if (currentUserId && currentUsername) {
+        queryParams.push(`user_id=${encodeURIComponent(currentUserId)}`);
+        queryParams.push(`username=${encodeURIComponent(currentUsername)}`);
+        console.log('[DEBUG] Adding user info to WebSocket URL:', currentUsername, currentUserId);
+      }
+      
+      // Add query parameters to URL
+      if (queryParams.length > 0) {
+        wsUrl += '?' + queryParams.join('&');
+      }
+      
+      console.log('[DEBUG] Connecting to WebSocket URL:', wsUrl);
+      
+      // Update status indicator
+      updateConnectionStatus('connecting');
+      
+      // Create new WebSocket connection with error handling
+      try {
+        console.log('[DEBUG] Creating new WebSocket connection to', wsUrl);
+        socket = new WebSocket(wsUrl);
+        updateConnectionStatus('connecting');
+        
+        // Set a timeout to clear the isConnecting flag if onopen/onerror don't fire
+        setTimeout(function() {
+          isConnecting = false;
+        }, 5000);
+        
+        // Set a connection timeout
+        connectionTimer = setTimeout(function() {
+          if (socket && socket.readyState !== WebSocket.OPEN) {
+            console.log('[DEBUG] Connection timeout - socket not open after', CONNECTION_TIMEOUT, 'ms');
+            try {
+              // Force close and wait before triggering reconnect
+              socket.close();
+              // Add a short delay before reconnect to ensure clean state
+              setTimeout(function() {
+                handleReconnect();
+              }, 1000);
+            } catch (e) {
+              console.error('[DEBUG] Error closing timed out socket:', e);
+              // If close fails, manually trigger reconnection
+              handleReconnect();
+            }
+          }
+        }, CONNECTION_TIMEOUT);
+        
+        // WebSocket event handlers
+        socket.onopen = function(e) {
+          console.log('[DEBUG] WebSocket connection established successfully');
+          // Clear connection timeout
+          if (connectionTimer) {
+            clearTimeout(connectionTimer);
+            connectionTimer = null;
+          }
+          reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+          socketReady = true;
+          isConnecting = false; // Clear connection in progress flag
+          updateConnectionStatus('connected');
+          
+          // Send any pending messages
+          if (pendingMessages.length > 0) {
+            console.log(`[DEBUG] Sending ${pendingMessages.length} pending messages`);
+            pendingMessages.forEach(msgObj => {
+              try {
+                socket.send(JSON.stringify(msgObj));
+                console.log('[DEBUG] Sent pending message:', msgObj.content.substring(0, 20) + '...');
+              } catch (e) {
+                console.error('[DEBUG] Error sending pending message:', e);
+              }
+            });
+            // Clear pending messages after sending
+            pendingMessages = [];
+          }
+        };
+        
+        // Handle connection errors
+        socket.onerror = function(e) {
+          console.error('[DEBUG] WebSocket error occurred:', e);
+          socketReady = false;
+          isConnecting = false; // Clear connection in progress flag
+          updateConnectionStatus('error');
+          // Don't trigger reconnect here, let onclose handle it
+        };
+        
+        // Handle disconnection
+        socket.onclose = function(e) {
+          console.log('[DEBUG] WebSocket connection closed:', e.code, e.reason);
+          // Clear connection timeout if it exists
+          if (connectionTimer) {
+            clearTimeout(connectionTimer);
+            connectionTimer = null;
+          }
+          socketReady = false;
+          isConnecting = false; // Clear connection in progress flag
+          updateConnectionStatus('disconnected');
+          
+          // Call the reconnect handler with a delay to prevent immediate reconnection
+          setTimeout(function() {
+            handleReconnect();
+          }, 500);
+        };
+        
+        // Function to handle reconnection with backoff
+        function handleReconnect() {
+          // Reset connection state flags if they were stuck
+          if (isConnecting) {
+            console.log('[DEBUG] Connection flag was stuck, resetting');
+            isConnecting = false;
+          }
+          
+          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            // Calculate delay with exponential backoff, capped at MAX_RECONNECT_DELAY
+            const delay = Math.min(
+              RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1), // Use exponential backoff with base 2
+              MAX_RECONNECT_DELAY
+            );
+            
+            console.log(`[DEBUG] Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+            // Display reconnection info to user
+            updateConnectionStatus('reconnecting');
+            
+            // Use a local flag to avoid reconnection loops
+            let reconnecting = true;
+            
+            // Clear any existing reconnection timers
+            if (reconnectTimer) {
+              clearTimeout(reconnectTimer);
+            }
+            
+            // Schedule reconnection with the calculated delay
+            reconnectTimer = setTimeout(function() {
+              if (reconnecting) {
+                reconnecting = false;
+                // Make sure socket is null or closed before reconnecting
+                if (socket) {
+                  if (socket.readyState !== WebSocket.CLOSED && socket.readyState !== WebSocket.CLOSING) {
+                    try {
+                      socket.close();
+                    } catch (e) {
+                      console.error('[DEBUG] Error closing socket during reconnect:', e);
+                    }
+                  }
+                  // Set to null to ensure clean state
+                  socket = null;
+                }
+                connectWebSocket();
+              }
+            }, delay);
+          } else {
+            console.log('[DEBUG] Maximum reconnection attempts reached. Please refresh the page.');
+            updateConnectionStatus('failed');
+          }
+        }
+      } catch (error) {
+        console.error('[DEBUG] Error creating WebSocket connection:', error);
+        socketReady = false;
+        updateConnectionStatus('error');
+        
+        // In case of a creation error, still try to reconnect
+        reconnectAttempts++;
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(
+            RECONNECT_DELAY * Math.pow(1.5, reconnectAttempts - 1),
+            MAX_RECONNECT_DELAY
+          );
+          console.log(`[DEBUG] Creation error. Retrying in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+          setTimeout(connectWebSocket, delay);
+        }
+      }
+    
+      socket.onmessage = function(event) {
+        try {
+          console.log('[DEBUG] WebSocket message received:', event.data);
+          const data = JSON.parse(event.data);
+          
+          // Handle different message types
+          switch(data.type) {
+            case 'connection_established':
+              console.log('[DEBUG] Connection established, authenticated:', data.authenticated);
+              updateConnectionStatus('connected');
+              break;
+            case 'shoutbox_message':
+              console.log('[DEBUG] Shoutbox message received - full data:', data);
+              // Using standardized message format
+              if (data.data) {
+                const messageData = data.data;
+                // Only display messages intended for the public shoutbox
+                if (messageData.shoutbox_type === 'public') {
+                  console.log('[DEBUG] Processing public shoutbox message');
+                  addShoutboxMessage(messageData);
+                } else {
+                  console.log('[DEBUG] Ignoring non-public shoutbox message:', messageData.shoutbox_type);
+                }
+              } else {
+                console.warn('[DEBUG] Message missing data.data property, using direct format');
+                // Try to use the data directly
+                const { type, ...messageData } = data;
+                // Only display messages intended for the public shoutbox
+                if (messageData.shoutbox_type === 'public') {
+                  addShoutboxMessage(messageData);
+                }
+              }
+              break;
+            case 'error':
+              console.error('[DEBUG] Received error message:', data.message);
+              alert('Error: ' + data.message);
+              break;
+            case 'online_users':
+              console.log('[DEBUG] Online users update received:', data.data);
+              updateOnlineUsers(data.data);
+              break;
+            case 'pong':
+              console.log('[DEBUG] Pong received');
+              // Pong received, connection is alive
+              break;
+            default:
+              console.log('[DEBUG] Unknown message type received:', data.type);
+              break;
+          }
+        } catch (error) {
+          console.error('[DEBUG] Error parsing WebSocket message:', error, '\nRaw data:', event.data);
+        }
+      };
+    
+      socket.onclose = function(event) {
+        socketReady = false;
+        updateConnectionStatus('disconnected');
+        
+        // Try to reconnect after a delay
+        setTimeout(connectWebSocket, 3000);
+      };
+    
+      socket.onerror = function(error) {
+        socketReady = false;
+        updateConnectionStatus('error');
+      };
+      
+      // Set up ping interval to keep connection alive
+      setInterval(function() {
+        if (socketReady) {
+          try {
+            socket.send(JSON.stringify({type: 'ping'}));
+          } catch (e) {
+            // Ignore errors on ping
+          }
+        }
+      }, 30000); // Send ping every 30 seconds
+    }
+    
+    // Function to update connection status indicator
+    function updateConnectionStatus(status) {
+      const statusElement = document.getElementById('connection-status');
+      if (!statusElement) return;
+      
+      statusElement.className = '';
+      
+      switch(status) {
+        case 'connecting':
+          statusElement.className = 'status-connecting';
+          statusElement.innerText = 'Connecting...';
+          break;
+        case 'connected':
+          statusElement.className = 'status-connected';
+          statusElement.innerText = 'Connected';
+          break;
+        case 'disconnected':
+          statusElement.className = 'status-disconnected';
+          statusElement.innerText = 'Disconnected';
+          break;
+        case 'error':
+          statusElement.className = 'status-error';
+          statusElement.innerText = 'Connection Error';
+          break;
+        case 'failed':
+          statusElement.className = 'status-error';
+          statusElement.innerText = 'Connection Failed - Refresh Page';
+          break;
+      }
+      
+      // Update the UI to show connection status
+      const shoutboxForm = document.getElementById('shoutbox-form');
+      if (shoutboxForm) {
+        if (status === 'connected') {
+          shoutboxForm.classList.remove('disabled');
+        } else {
+          shoutboxForm.classList.add('disabled');
+        }
+      }
+      
+      // Update the socketReady flag based on the status
+      socketReady = (status === 'connected');
+    }
+    
+    // Function to add a new shoutbox message
+    function addShoutboxMessage(message) {
+      console.log('[DEBUG] addShoutboxMessage called with:', message);
+      
+      const shoutboxMessages = document.getElementById('shoutbox-messages');
+      if (!shoutboxMessages) {
+        console.error('[DEBUG] Shoutbox messages container not found!');
+        return;
+      }
+      
+      try {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'shoutbox-message';
+        
+        // Check for required fields
+        if (!message.created_at) {
+          console.error('[DEBUG] Message missing created_at field:', message);
+          return;
+        }
+        
+        // Format date
+        const date = new Date(message.created_at);
+        console.log('[DEBUG] Parsed date:', date);
+        const formattedDate = `${date.getMonth()+1}/${date.getDate()}/${date.getFullYear()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+        
+        // Create message HTML
+        messageDiv.innerHTML = `
+          <div class="message-author">
+            <img src="${message.avatar_url || '/static/images/default-avatar.png'}" alt="${message.username}" class="message-avatar">
+            <span class="message-username">${message.username}</span>
+          </div>
+          <div class="message-content">${message.message}</div>
+          <div class="message-time">${formattedDate}</div>
+        `;
+        
+        console.log('[DEBUG] Created message element:', messageDiv.outerHTML);
+        
+        // Remove empty message placeholder if it exists
+        const emptyMessage = shoutboxMessages.querySelector('.shoutbox-empty-message');
+        if (emptyMessage) {
+          emptyMessage.remove();
+        }
+        
+        // PREPEND to shoutbox to match the server-side sorting (newest first)
+        if (shoutboxMessages.firstChild) {
+          shoutboxMessages.insertBefore(messageDiv, shoutboxMessages.firstChild);
+        } else {
+          shoutboxMessages.appendChild(messageDiv);
+        }
+        
+        // Scroll to top to see the newest message
+        shoutboxMessages.scrollTop = 0;
+        console.log('[DEBUG] Message prepended to shoutbox');
+      } catch (error) {
+        console.error('[DEBUG] Error adding message to shoutbox:', error);
+      }
+    }
+    
+    // Add connection status indicator to the page
+    function addConnectionStatusIndicator() {
+      const shoutboxContainer = document.querySelector('.shoutbox-container');
+      if (!shoutboxContainer) return;
+      
+      // Check if status indicator already exists
+      if (!document.getElementById('connection-status-container')) {
+        const statusContainer = document.createElement('div');
+        statusContainer.id = 'connection-status-container';
+        statusContainer.className = 'connection-status-container';
+        statusContainer.innerHTML = `
+          <span>Status: </span>
+          <span id="connection-status" class="status-connecting">Connecting...</span>
+        `;
+        
+        // Insert at the top of the shoutbox container
+        shoutboxContainer.insertBefore(statusContainer, shoutboxContainer.firstChild);
+      }
+    }
+    
+    // Function to update online users list
+    function updateOnlineUsers(data) {
+      const onlineMembersList = document.getElementById('online-members-list');
+      const membersStats = document.getElementById('members-stats');
+      if (!onlineMembersList || !membersStats) return;
+      
+      // Clear current list
+      onlineMembersList.innerHTML = '';
+      
+      // Sort users: registered users first (alphabetically), then guests
+      const sortedUsers = [...data.users].sort((a, b) => {
+        // Put registered users first
+        if (a.is_registered && !b.is_registered) return -1;
+        if (!a.is_registered && b.is_registered) return 1;
+        
+        // Then sort by username
+        return a.username.localeCompare(b.username);
+      });
+      
+      // Add each online user
+      sortedUsers.forEach(user => {
+        const memberDiv = document.createElement('div');
+        memberDiv.className = user.is_registered ? 'member' : 'member guest';
+        
+        // Create member content HTML with a badge for their tier
+        memberDiv.innerHTML = `
+          <span class="member-name">${user.username}</span>
+          ${user.is_registered ? `<span class="member-tier tier-${user.account_tier}">${user.tier_name}</span>` : ''}
+          <span class="member-status ${user.is_registered ? 'online' : 'guest'}"></span>
+        `;
+        
+        onlineMembersList.appendChild(memberDiv);
+      });
+      
+      // Update stats - use the registered_count directly from data if available
+      const registeredCount = data.registered_count !== undefined ? 
+                             data.registered_count : 
+                             data.users.filter(user => user.is_registered).length;
+      
+      // Update stats
+      membersStats.innerHTML = `<p>Total: ${data.total_count} (members: ${registeredCount}, guests: ${data.guest_count})</p>`;
+    }
+    
+    // Add connection status indicator
+    addConnectionStatusIndicator();
+    
+    // Function to send a message through WebSocket
+    function sendMessage(messageInput, userIdElement, usernameElement, messageType) {
+      const message = messageInput.value.trim();
+      const userId = userIdElement.value.trim();
+      const username = usernameElement.value.trim();
+      
+      // Don't send empty messages
+      if (!message) {
+        return;
+      }
+      
+      // Create the message object
+      const messageObject = {
+        type: 'shoutbox_message',
+        content: message,
+        user_id: userId,
+        username: username,
+        shoutbox_type: messageType
+      };
+      
+      // Check socket connection
+      if (!socketReady || !socket || socket.readyState !== WebSocket.OPEN) {
+        console.log('[DEBUG] Socket not ready, storing message for later transmission');
+        // Store message for retransmission when connection is re-established
+        pendingMessages.push(messageObject);
+        // Try to reconnect
+        if (!isConnecting) {
+          connectWebSocket();
+        }
+        // Let the user know we're trying to send their message
+        updateConnectionStatus('reconnecting');
+        return;
+      }
+      
+      try {
+        socket.send(JSON.stringify(messageObject));
+        console.log('[DEBUG] Message sent successfully');
+        
+        // Clear input field
+        messageInput.value = '';
+      } catch (error) {
+        console.error('[DEBUG] Error sending message:', error);
+        alert('Error sending message. Please try again.');
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize WebSocket connection
+      connectWebSocket();
+      
+      // Handle post thread button clicks
+      document.querySelectorAll('.post-thread-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // Show forum selection dialog
+          const forums = document.querySelectorAll('.forum-item');
+          let forumOptions = '<div class="forum-selection-title">Select a forum to post in:</div><div class="forum-selection-list">';
+          
+          forums.forEach(function(forum) {
+            const forumName = forum.querySelector('.forum-info h4 a').textContent;
+            const forumId = forum.querySelector('.forum-info h4 a').getAttribute('href').split('/').pop();
+            forumOptions += `<div class="forum-selection-item" data-forum-id="${forumId}">${forumName}</div>`;
+          });
+          
+          forumOptions += '</div>';
+          
+          // Create and show the dialog
+          const dialog = document.createElement('div');
+          dialog.className = 'forum-selection-dialog';
+          dialog.innerHTML = forumOptions;
+          document.body.appendChild(dialog);
+          
+          // Add click event to forum selection items
+          dialog.querySelectorAll('.forum-selection-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+              const forumId = this.getAttribute('data-forum-id');
+              window.location.href = `/forum/${forumId}/new-thread`;
+            });
+          });
+          
+          // Close dialog when clicking outside
+          document.addEventListener('click', function closeDialog(e) {
+            if (!dialog.contains(e.target) && e.target !== btn) {
+              dialog.remove();
+              document.removeEventListener('click', closeDialog);
+            }
+          });
+        });
+      });
+      
+      // Get DOM elements
+      const shoutboxForm = document.getElementById('shoutbox-form');
+      const shoutboxInput = document.getElementById('shoutbox-input');
+      
+      // Handle shoutbox form submission
+      if (shoutboxForm) {
+        shoutboxForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          // Get user ID and username from hidden fields
+          const userIdField = document.getElementById('current-user-id');
+          const usernameField = document.getElementById('current-username');
+          const userId = userIdField ? userIdField.value : null;
+          const username = usernameField ? usernameField.value : null;
+          
+          if (!userId || !username) {
+            console.error('User ID or username not found');
+            alert('Error: User information not found. Please refresh the page and try again.');
+            return;
+          }
+          
+          console.log('[DEBUG] Sending public shoutbox message:', shoutboxInput.value);
+          
+          // Use the unified sendMessage function
+          sendMessage(shoutboxInput, userIdField, usernameField, 'public');
+        });
+      }
+    });
+  </script>
+</body>
+</html>

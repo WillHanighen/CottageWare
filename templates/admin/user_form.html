@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - {{ "Edit" if user else "New" }} User</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <section class="admin-panel">
+      <div class="admin-header">
+        <h2><i class="fas fa-{{ 'edit' if user else 'plus' }}"></i> {{ "Edit" if user else "Add New" }} User</h2>
+        <div class="admin-actions">
+          <a href="/admin/users" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Users</a>
+        </div>
+      </div>
+
+      <div class="form-container">
+        <form method="post" action="/admin/users/save" enctype="multipart/form-data" class="user-form">
+          {% if user %}
+          <input type="hidden" name="user_id" value="{{ user.id }}">
+          {% endif %}
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="username">Username <span class="required">*</span></label>
+              <input type="text" id="username" name="username" value="{{ user.username if user else '' }}" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="email">Email <span class="required">*</span></label>
+              <input type="email" id="email" name="email" value="{{ user.email if user else '' }}" required>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="password">{{ "New Password" if user else "Password" }}</label>
+              <input type="password" id="password" name="password" {{ "required" if not user else "" }}>
+              {% if user %}
+              <div class="form-help">Leave empty to keep current password</div>
+              {% endif %}
+            </div>
+            
+            <div class="form-group">
+              <label for="confirm_password">Confirm Password</label>
+              <input type="password" id="confirm_password" name="confirm_password" {{ "required" if not user else "" }}>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="avatar">Avatar</label>
+            {% if user and user.avatar_url %}
+              <div class="current-image">
+                <img src="{{ user.avatar_url }}" alt="{{ user.username }}" class="avatar-preview">
+                <div class="image-overlay">Current Avatar</div>
+              </div>
+            {% endif %}
+            <input type="file" id="avatar" name="avatar" accept="image/*">
+            <div class="form-help">Leave empty to keep current avatar (if editing)</div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="account_tier">Account Tier</label>
+              <select id="account_tier" name="account_tier">
+                <option value="0" {% if user and user.profile and user.profile.account_tier == 0 %}selected{% endif %}>Unregistered (0)</option>
+                <option value="1" {% if not user or (user and user.profile and user.profile.account_tier == 1) %}selected{% endif %}>Registered (1)</option>
+                <option value="2" {% if user and user.profile and user.profile.account_tier == 2 %}selected{% endif %}>Customer (2)</option>
+                <option value="3" {% if user and user.profile and user.profile.account_tier == 3 %}selected{% endif %}>Moderator (3)</option>
+                <option value="4" {% if user and user.profile and user.profile.account_tier == 4 %}selected{% endif %}>Admin (4)</option>
+                <option value="5" {% if user and user.profile and user.profile.account_tier == 5 %}selected{% endif %}>Owner (5)</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="roles">Roles</label>
+              <select id="roles" name="roles" multiple>
+                {% for role in roles %}
+                <option value="{{ role.id }}" {% if user and role in user.roles %}selected{% endif %}>{{ role.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-help">Hold Ctrl/Cmd to select multiple roles</div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="bio">Bio</label>
+            <textarea id="bio" name="bio" rows="4">{{ user.profile.bio if user and user.profile else '' }}</textarea>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="location">Location</label>
+              <input type="text" id="location" name="location" value="{{ user.profile.location if user and user.profile else '' }}">
+            </div>
+            
+            <div class="form-group">
+              <label for="signature">Signature</label>
+              <input type="text" id="signature" name="signature" value="{{ user.profile.signature if user and user.profile else '' }}">
+            </div>
+          </div>
+          
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="is_active" name="is_active" {% if not user or user.is_active %}checked{% endif %}>
+            <label for="is_active">Active Account</label>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save User
+            </button>
+            <a href="/admin/users" class="btn btn-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+  
+  {% include 'includes/footer.html' %}
+  
+  <script>
+    // Password validation
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const form = document.querySelector('form');
+    
+    form.addEventListener('submit', function(e) {
+      if (password.value || confirmPassword.value) {
+        if (password.value !== confirmPassword.value) {
+          e.preventDefault();
+          alert('Passwords do not match');
+        }
+      }
+    });
+    
+    // Avatar preview
+    const avatarInput = document.getElementById('avatar');
+    const previewContainer = document.querySelector('.current-image') || document.createElement('div');
+    
+    if (!previewContainer.classList.contains('current-image')) {
+      previewContainer.className = 'current-image';
+      avatarInput.parentNode.insertBefore(previewContainer, avatarInput.nextSibling);
+    }
+    
+    avatarInput.addEventListener('change', function() {
+      while (previewContainer.firstChild) {
+        previewContainer.removeChild(previewContainer.firstChild);
+      }
+      
+      if (this.files && this.files[0]) {
+        const img = document.createElement('img');
+        img.className = 'avatar-preview';
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'image-overlay';
+        overlay.textContent = 'New Avatar';
+        
+        previewContainer.appendChild(img);
+        previewContainer.appendChild(overlay);
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          img.src = e.target.result;
+        };
+        
+        reader.readAsDataURL(this.files[0]);
+        previewContainer.style.display = 'block';
+      } else {
+        previewContainer.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

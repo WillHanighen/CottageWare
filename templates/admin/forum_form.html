@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - {{ "Edit" if forum else "New" }} Forum</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <section class="admin-panel">
+      <div class="admin-header">
+        <h2><i class="fas fa-{{ 'edit' if forum else 'plus' }}"></i> {{ "Edit" if forum else "Add New" }} Forum</h2>
+        <div class="admin-actions">
+          <a href="/admin/forums" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Forums</a>
+        </div>
+      </div>
+
+      <div class="form-container">
+        <form method="post" action="/admin/forums/save" class="forum-form">
+          {% if forum %}
+          <input type="hidden" name="forum_id" value="{{ forum.id }}">
+          {% endif %}
+          
+          <div class="form-group">
+            <label for="name">Forum Name <span class="required">*</span></label>
+            <input type="text" id="name" name="name" value="{{ forum.name if forum else '' }}" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="4">{{ forum.description if forum else '' }}</textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="category_id">Category <span class="required">*</span></label>
+            <select id="category_id" name="category_id" required>
+              <option value="">Select a category</option>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}" {% if forum and forum.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="display_order">Display Order</label>
+              <input type="number" id="display_order" name="display_order" value="{{ forum.order if forum else 0 }}" min="0">
+              <div class="form-help">Lower numbers display first</div>
+            </div>
+            
+            <div class="form-group">
+              <label for="access_level">Access Level</label>
+              <select id="access_level" name="access_level">
+                <option value="0" {% if not forum or forum.access_level == 0 %}selected{% endif %}>Public (0)</option>
+                <option value="1" {% if forum and forum.access_level == 1 %}selected{% endif %}>Registered (1)</option>
+                <option value="2" {% if forum and forum.access_level == 2 %}selected{% endif %}>Customer (2)</option>
+                <option value="3" {% if forum and forum.access_level == 3 %}selected{% endif %}>Moderator (3)</option>
+                <option value="4" {% if forum and forum.access_level == 4 %}selected{% endif %}>Admin (4)</option>
+                <option value="5" {% if forum and forum.access_level == 5 %}selected{% endif %}>Owner (5)</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group checkbox-group">
+              <input type="checkbox" id="is_visible" name="is_visible" {% if not forum or forum.is_public %}checked{% endif %}>
+              <label for="is_visible">Visible</label>
+            </div>
+            
+
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Forum
+            </button>
+            <a href="/admin/forums" class="btn btn-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+  
+  {% include 'includes/footer.html' %}
+</body>
+</html>

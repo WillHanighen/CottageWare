@@ -1,30 +1,119 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Forum</title>
+  <title>CottageWare - Forum</title>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-  <h1>Forum</h1>
-  <form hx-post="/post" hx-target="#posts" hx-swap="outerHTML">
-    <input type="text" name="content" required>
-    <button type="submit">Post</button>
-  </form>
-  <div id="posts">
-    {% for post in posts %}
-      <p>{{ post.content }}</p>
-    {% endfor %}
-  </div>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Hero Section -->
+    <section class="hero">
+      <h2>PREMIUM <span>GAMING PRODUCTS</span></h2>
+      <p>Elevate your gaming experience with CottageWare</p>
+      <div class="hero-buttons">
+        <a href="/forum" class="btn"><i class="fas fa-comments"></i> COMMUNITY</a>
+        <a href="/products" class="btn"><i class="fas fa-shopping-cart"></i> SHOP NOW</a>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+      <div class="feature-card">
+        <div class="icon"><i class="fas fa-gamepad"></i></div>
+        <h3>Premium Gaming Products</h3>
+        <p>CottageWare offers high-quality gaming products at competitive prices. Enhance your gaming experience today!</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon"><i class="fas fa-shield-alt"></i></div>
+        <h3>Trusted Quality</h3>
+        <p>We only sell the most reliable and tested products to ensure you get the best gaming experience possible.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon"><i class="fas fa-headset"></i></div>
+        <h3>24/7 Support</h3>
+        <p>Our dedicated support team is available around the clock to assist with any questions or issues you may have.</p>
+      </div>
+    </section>
+    
+    <!-- Featured Products -->
+    <section class="featured-products">
+      <h2 class="section-title">Featured <span>Products</span></h2>
+      <div class="products-grid">
+        {% for product in products %}
+          <div class="product-card">
+            <div class="product-image">
+              {% if product.image_url %}
+                <img src="{{ product.image_url }}" alt="{{ product.name }}">
+              {% else %}
+                <div class="product-image-placeholder">
+                  <i class="fas fa-box-open"></i>
+                </div>
+              {% endif %}
+              {% if product.is_featured %}
+                <div class="product-badge">Featured</div>
+              {% endif %}
+            </div>
+            <div class="product-content">
+              <h3 class="product-title">{{ product.name }}</h3>
+              <p class="product-description">{{ product.description }}</p>
+              <div class="product-price">{{ product.price }}</div>
+              <a href="{{ product.external_url }}" class="btn product-btn" target="_blank">
+                <i class="fas fa-external-link-alt"></i> View Product
+              </a>
+            </div>
+          </div>
+        {% else %}
+          <div class="no-products">
+            <p>No products available at the moment. Check back soon!</p>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="view-all-products">
+        <a href="/products" class="btn"><i class="fas fa-th-list"></i> View All Products</a>
+      </div>
+    </section>
+
+  </main>
+
+  {% include 'includes/footer.html' %}
   
+  <!-- WebSocket Script -->
   <script>
     const ws = new WebSocket("ws://localhost:8000/ws");
     ws.onmessage = function(event) {
-      const post = document.createElement("p");
-      post.textContent = event.data;
-      document.getElementById("posts").appendChild(post);
+      const postDiv = document.createElement("div");
+      postDiv.className = "post";
+      
+      const postHeader = document.createElement("div");
+      postHeader.className = "post-header";
+      
+      const postAuthor = document.createElement("span");
+      postAuthor.className = "post-author";
+      postAuthor.textContent = "User";
+      
+      const postTime = document.createElement("span");
+      postTime.className = "post-time";
+      postTime.textContent = "Just now";
+      
+      postHeader.appendChild(postAuthor);
+      postHeader.appendChild(postTime);
+      
+      const postContent = document.createElement("div");
+      postContent.className = "post-content";
+      postContent.textContent = event.data;
+      
+      postDiv.appendChild(postHeader);
+      postDiv.appendChild(postContent);
+      
+      document.getElementById("posts").appendChild(postDiv);
     };
   </script>
-  
 </body>
 </html>

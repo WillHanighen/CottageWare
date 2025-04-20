@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - Edit Profile</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <div class="profile-edit-container">
+        <h1>Edit Profile</h1>
+        
+        {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="post" action="/profile/edit" class="profile-edit-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="avatar_file">Profile Picture</label>
+                <div class="profile-pic-preview">
+                    {% if user.avatar_url %}
+                    <img src="{{ user.avatar_url }}" alt="Current profile picture" class="current-avatar" id="preview-image">
+                    {% else %}
+                    <div class="avatar-placeholder preview-placeholder" id="preview-placeholder">{{ user.username[0] | upper }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="custom-file-upload">
+                    <div class="file-upload-buttons">
+                        <label for="avatar_file" class="file-upload-btn">
+                            <i class="fas fa-upload"></i> Select Image
+                            <input type="file" id="avatar_file" name="avatar_file" class="form-control-file" accept="image/jpeg,image/png,image/gif,image/webp">
+                        </label>
+                    </div>
+                    
+                    <div class="drop-zone" id="drop-zone">
+                        <p class="drop-zone-text">Or drag and drop an image here</p>
+                    </div>
+                    
+                    <p class="file-upload-info">Supported formats: JPEG, PNG, GIF, WebP</p>
+                </div>
+                
+                <!-- Hidden canvas for processing clipboard images -->
+                <canvas id="clipboard-canvas" style="display:none;"></canvas>
+                <!-- Hidden input for clipboard data -->
+                <input type="hidden" id="clipboard_image_data" name="clipboard_image_data">
+            </div>
+            
+            <div class="form-group">
+                <label for="bio">Bio</label>
+                <textarea id="bio" name="bio" class="form-control" rows="4">{{ user.profile.bio or '' }}</textarea>
+                <small class="form-text text-muted">Supports Markdown formatting: **bold**, *italic*, [links](https://example.com), etc.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" id="location" name="location" class="form-control" value="{{ user.profile.location or '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="website">Website</label>
+                <input type="text" id="website" name="website" class="form-control" value="{{ user.profile.website or '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="discord">Discord Username</label>
+                <input type="text" id="discord" name="discord" class="form-control" value="{{ user.profile.discord or '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="signature">Forum Signature</label>
+                <textarea id="signature" name="signature" class="form-control" rows="2">{{ user.profile.signature or '' }}</textarea>
+                <small class="form-text text-muted">This will appear below your posts in the forum. Supports Markdown formatting.</small>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="/profile" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+  </main>
+
+  {% include 'includes/footer.html' %}
+
+  <!-- Profile Picture Upload Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const fileInput = document.getElementById('avatar_file');
+      const dropZone = document.getElementById('drop-zone');
+      const clipboardCanvas = document.getElementById('clipboard-canvas');
+      const clipboardImageData = document.getElementById('clipboard_image_data');
+      const previewImage = document.getElementById('preview-image');
+      const previewPlaceholder = document.getElementById('preview-placeholder');
+      
+      // Function to update preview image
+      function updatePreview(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          // Create or update preview image
+          if (previewImage) {
+            previewImage.src = e.target.result;
+            previewImage.style.display = 'block';
+            if (previewPlaceholder) {
+              previewPlaceholder.style.display = 'none';
+            }
+          } else {
+            // If there's no preview image yet, create one
+            const newPreview = document.createElement('img');
+            newPreview.src = e.target.result;
+            newPreview.alt = 'Profile picture preview';
+            newPreview.className = 'current-avatar';
+            newPreview.id = 'preview-image';
+            
+            const previewContainer = document.querySelector('.profile-pic-preview');
+            previewContainer.innerHTML = '';
+            previewContainer.appendChild(newPreview);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+      
+      // Handle file input change
+      fileInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+          updatePreview(this.files[0]);
+          // Clear clipboard data when file is selected
+          clipboardImageData.value = '';
+        }
+      });
+      
+      // Handle paste from clipboard
+      pasteButton.addEventListener('click', function() {
+        navigator.clipboard.read().then(items => {
+          for (const item of items) {
+            if (item.types.includes('image/png') || 
+                item.types.includes('image/jpeg') || 
+                item.types.includes('image/gif') || 
+                item.types.includes('image/webp')) {
+              
+              const imageType = item.types.find(type => type.startsWith('image/'));
+              item.getType(imageType).then(blob => {
+                // Create a file from the blob
+                const file = new File([blob], 'clipboard-image.' + imageType.split('/')[1], {
+                  type: imageType
+                });
+                
+                // Update preview
+                updatePreview(file);
+                
+                // Convert to base64 for form submission
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                  clipboardImageData.value = e.target.result;
+                  // Clear file input when clipboard is used
+                  fileInput.value = '';
+                };
+                reader.readAsDataURL(file);
+              });
+              break;
+            }
+          }
+        }).catch(err => {
+          console.error('Error reading from clipboard:', err);
+          alert('Could not access clipboard. Please check your browser permissions.');
+        });
+      });
+      
+      // Global paste event for the entire page
+      document.addEventListener('paste', function(e) {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            updatePreview(blob);
+            
+            // Convert to base64 for form submission
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              clipboardImageData.value = e.target.result;
+              // Clear file input when clipboard is used
+              fileInput.value = '';
+            };
+            reader.readAsDataURL(blob);
+            break;
+          }
+        }
+      });
+      
+      // Drag and drop functionality
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+      });
+      
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+      });
+      
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+      });
+      
+      function highlight() {
+        dropZone.classList.add('active');
+      }
+      
+      function unhighlight() {
+        dropZone.classList.remove('active');
+      }
+      
+      dropZone.addEventListener('drop', handleDrop, false);
+      
+      function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files && files[0]) {
+          updatePreview(files[0]);
+          
+          // Set the file to the file input
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(files[0]);
+          fileInput.files = dataTransfer.files;
+          
+          // Clear clipboard data when file is dropped
+          clipboardImageData.value = '';
+        }
+      }
+    });
+  </script>
+</body>
+</html>

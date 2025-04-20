@@ -1,0 +1,645 @@
+"""
+Admin functionality for CottageWare
+"""
+from fastapi import Depends, HTTPException, Request, status, Form, UploadFile, File
+from fastapi.responses import HTMLResponse, RedirectResponse
+from typing import Optional, List
+from sqlalchemy.orm import Session
+import os
+import math
+import time
+from sqlalchemy import func, desc, or_, and_
+import uuid
+from datetime import datetime
+
+from database import SessionLocal
+from models import User, UserProfile, Product, Category, Forum, Thread, Post, Role
+from auth import get_current_active_user, SECRET_KEY, ALGORITHM, admin_required
+from jose import JWTError, jwt
+from utils import render_markdown
+
+# Database dependency
+def get_db():
+    """Dependency to get the database session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Admin access decorator
+def admin_required(user_tier_minimum: int = 4):
+    """
+    Dependency to check if current user has admin privileges
+    Requires minimum tier level (default 4 - Admin)
+    """
+    def dependency(request: Request, db: Session = Depends(get_db)):
+        # Check for access token cookie
+        token = request.cookies.get("access_token")
+        if not token:
+            # Redirect to login if no token
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        # Try to decode the token
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            if username is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid authentication credentials"
+                )
+            
+            # Get user from database
+            user = db.query(User).filter(User.username == username).first()
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="User not found"
+                )
+            
+            # Check user tier
+            if not user.profile or user.profile.account_tier < user_tier_minimum:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Insufficient permissions"
+                )
+            
+            return user
+        except JWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+    
+    return dependency
+
+# Admin dashboard
+async def admin_dashboard(request: Request, db: Session, current_user: User):
+    """Admin dashboard with site statistics"""
+    # Get statistics
+    user_count = db.query(User).count()
+    product_count = db.query(Product).count() 
+    thread_count = db.query(Thread).count()
+    post_count = db.query(Post).count()
+    
+    # Get recent activity (simplified example)
+    recent_activities = [
+        {
+            "icon": "fas fa-user",
+            "text": f"New user registered: {user.username}",
+            "time": user.created_at.strftime('%Y-%m-%d %H:%M')
+        } 
+        for user in db.query(User).order_by(User.created_at.desc()).limit(5).all()
+    ]
+    
+    # Add some product activities
+    product_activities = [
+        {
+            "icon": "fas fa-shopping-cart",
+            "text": f"Product updated: {product.name}",
+            "time": datetime.now().strftime('%Y-%m-%d %H:%M')
+        }
+        for product in db.query(Product).order_by(Product.id.desc()).limit(3).all()
+    ]
+    
+    recent_activities.extend(product_activities)
+    
+    # Sort by most recent
+    recent_activities.sort(key=lambda x: x["time"], reverse=True)
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "user_count": user_count,
+        "product_count": product_count,
+        "thread_count": thread_count,
+        "post_count": post_count,
+        "recent_activities": recent_activities
+    }
+
+# Product management
+async def product_list(request: Request, db: Session, current_user: User, page: int = 1, per_page: int = 10):
+    """List all products with pagination"""
+    total = db.query(Product).count()
+    total_pages = (total + per_page - 1) // per_page
+    
+    products = db.query(Product).order_by(Product.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "products": products,
+        "current_page": page,
+        "total_pages": total_pages
+    }
+
+async def product_form(request: Request, db: Session, current_user: User, product_id: Optional[int] = None):
+    """Product create/edit form"""
+    product = None
+    if product_id:
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            return RedirectResponse("/admin/products", status_code=302)
+    
+    # Get categories for the dropdown
+    categories = db.query(Category).order_by(Category.name).all()
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "product": product,
+        "categories": categories
+    }
+
+async def product_save(
+    db: Session, 
+    current_user: User,
+    name: str = Form(...),
+    description: str = Form(...),
+    price: float = Form(...),
+    stock: int = Form(...),
+    is_active: bool = Form(False),
+    is_featured: bool = Form(False),
+    category_id: Optional[int] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    product_id: Optional[int] = Form(None)
+):
+    """Save product (create or update)"""
+    if product_id:
+        # Update existing product
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+    else:
+        # Create new product
+        product = Product()
+    
+    # Update product fields
+    product.name = name
+    product.description = description
+    product.price = price
+    product.stock = stock
+    product.is_active = is_active
+    product.is_featured = is_featured
+    product.category_id = category_id if category_id else None
+    
+    # Handle image upload
+    if image and image.filename:
+        # Create upload directory if it doesn't exist
+        upload_dir = os.path.join("static", "uploads", "products")
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Generate unique filename
+        file_ext = os.path.splitext(image.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        # Save file
+        with open(file_path, "wb") as f:
+            content = await image.read()
+            f.write(content)
+        
+        # Update product image URL
+        product.image_url = f"/{file_path.replace(os.sep, '/')}"
+    
+    # Save to database
+    if not product_id:
+        db.add(product)
+    
+    db.commit()
+    
+    return RedirectResponse("/admin/products", status_code=302)
+
+async def product_toggle(db: Session, current_user: User, product_id: int):
+    """Toggle product active status"""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    product.is_active = not product.is_active
+    db.commit()
+    
+    return RedirectResponse("/admin/products", status_code=302)
+
+async def product_delete(db: Session, current_user: User, product_id: int):
+    """Delete a product"""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    db.delete(product)
+    db.commit()
+    
+    return RedirectResponse("/admin/products", status_code=302)
+
+# User management
+async def user_list(request: Request, db: Session, current_user: User, page: int = 1, per_page: int = 10):
+    """List all users with pagination"""
+    total = db.query(User).count()
+    total_pages = (total + per_page - 1) // per_page
+    
+    users = db.query(User).order_by(User.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "users": users,
+        "current_page": page,
+        "total_pages": total_pages
+    }
+
+async def user_form(request: Request, db: Session, current_user: User, user_id: Optional[int] = None):
+    """User create/edit form"""
+    user = None
+    if user_id:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return RedirectResponse("/admin/users", status_code=302)
+    
+    # Get roles for the dropdown
+    roles = db.query(Role).order_by(Role.name).all()
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "user": user,
+        "roles": roles
+    }
+
+async def user_toggle(db: Session, current_user: User, user_id: int):
+    """Toggle user active status"""
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        return RedirectResponse(url="/admin/users?error=User+not+found", status_code=303)
+    
+    # Prevent deactivating yourself
+    if user.id == current_user.id:
+        return RedirectResponse(url="/admin/users?error=Cannot+deactivate+yourself", status_code=303)
+    
+    user.is_active = not user.is_active
+    db.commit()
+    
+    return RedirectResponse(url=f"/admin/users?success=User+status+updated", status_code=303)
+
+async def user_save(db: Session, current_user: User, form_data: dict, avatar_file=None):
+    """Save user data"""
+    user_id = form_data.get('user_id')
+    is_new = user_id is None or user_id == ''
+    
+    if is_new:
+        # Check if username or email already exists
+        existing_user = db.query(User).filter(
+            or_(User.username == form_data.get('username'), User.email == form_data.get('email'))
+        ).first()
+        
+        if existing_user:
+            return RedirectResponse(
+                url="/admin/users?error=Username+or+email+already+exists",
+                status_code=303
+            )
+        
+        # Create new user
+        user = User(
+            username=form_data.get('username'),
+            email=form_data.get('email'),
+            is_active=form_data.get('is_active') == 'on'
+        )
+        
+        # Set password
+        if form_data.get('password'):
+            user.hashed_password = get_password_hash(form_data.get('password'))
+        
+        db.add(user)
+        db.flush()  # Get the user ID
+        
+        # Create profile
+        profile = UserProfile(
+            user_id=user.id,
+            account_tier=int(form_data.get('account_tier', 1)),
+            bio=form_data.get('bio', ''),
+            location=form_data.get('location', ''),
+            signature=form_data.get('signature', '')
+        )
+        db.add(profile)
+        
+    else:
+        # Update existing user
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        
+        if not user:
+            return RedirectResponse(url="/admin/users?error=User+not+found", status_code=303)
+        
+        # Check if username or email already exists for another user
+        existing_user = db.query(User).filter(
+            and_(
+                or_(User.username == form_data.get('username'), User.email == form_data.get('email')),
+                User.id != user.id
+            )
+        ).first()
+        
+        if existing_user:
+            return RedirectResponse(
+                url=f"/admin/users/{user.id}/edit?error=Username+or+email+already+exists",
+                status_code=303
+            )
+        
+        # Update user data
+        user.username = form_data.get('username')
+        user.email = form_data.get('email')
+        user.is_active = form_data.get('is_active') == 'on'
+        
+        # Update password if provided
+        if form_data.get('password'):
+            user.hashed_password = get_password_hash(form_data.get('password'))
+        
+        # Update profile
+        if user.profile:
+            user.profile.account_tier = int(form_data.get('account_tier', 1))
+            user.profile.bio = form_data.get('bio', '')
+            user.profile.location = form_data.get('location', '')
+            user.profile.signature = form_data.get('signature', '')
+    
+    # Handle avatar upload
+    if avatar_file and avatar_file.filename:
+        # Create avatar directory if it doesn't exist
+        avatar_dir = os.path.join('static', 'avatars')
+        os.makedirs(avatar_dir, exist_ok=True)
+        
+        # Generate unique filename
+        file_ext = os.path.splitext(avatar_file.filename)[1]
+        avatar_filename = f"user_{user.id}_{int(time.time())}{file_ext}"
+        avatar_path = os.path.join(avatar_dir, avatar_filename)
+        
+        # Save the file
+        with open(avatar_path, 'wb') as f:
+            f.write(avatar_file.file.read())
+        
+        # Update user avatar URL
+        user.avatar_url = f"/static/avatars/{avatar_filename}"
+    
+    # Handle roles if they exist in the system
+    if 'roles' in form_data and hasattr(user, 'roles'):
+        # Clear existing roles
+        user.roles = []
+        
+        # Add selected roles
+        role_ids = form_data.getlist('roles') if hasattr(form_data, 'getlist') else form_data.get('roles', [])
+        for role_id in role_ids:
+            role = db.query(Role).filter(Role.id == int(role_id)).first()
+            if role:
+                user.roles.append(role)
+    
+    db.commit()
+    
+    return RedirectResponse(url="/admin/users?success=User+saved+successfully", status_code=303)
+
+async def user_delete(db: Session, current_user: User, user_id: int):
+    """Delete a user"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Prevent deleting yourself
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    db.delete(user)
+    db.commit()
+    
+    return RedirectResponse("/admin/users", status_code=302)
+
+# Forum management
+async def forum_management(request: Request, db: Session, current_user: User, tab: str = "categories", page: int = 1):
+    """Admin forum management page"""
+    per_page = 20
+    
+    # Get categories
+    categories = db.query(Category).order_by(Category.order).all()
+    
+    # Get forums
+    forums = db.query(Forum).order_by(Forum.category_id, Forum.order).all()
+    
+    # Get threads with pagination if tab is threads
+    threads = []
+    total_threads = 0
+    if tab == "threads":
+        threads_query = db.query(Thread).order_by(Thread.created_at.desc())
+        total_threads = threads_query.count()
+        threads = threads_query.offset((page - 1) * per_page).limit(per_page).all()
+    
+    # Calculate pagination
+    total_pages = math.ceil(total_threads / per_page) if total_threads > 0 else 1
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "tab": tab,
+        "categories": categories,
+        "forums": forums,
+        "threads": threads,
+        "page": page,
+        "total_pages": total_pages,
+        "total_threads": total_threads
+    }
+
+async def category_save(db: Session, current_user: User, form_data: dict):
+    """Save category data"""
+    category_id = form_data.get('category_id')
+    is_new = category_id is None or category_id == ''
+    
+    if is_new:
+        # Create new category
+        category = Category(
+            name=form_data.get('name'),
+            description=form_data.get('description', ''),
+            order=int(form_data.get('display_order', 0)),
+            is_public=form_data.get('is_visible') == 'on'
+        )
+        db.add(category)
+    else:
+        # Update existing category
+        category = db.query(Category).filter(Category.id == int(category_id)).first()
+        
+        if not category:
+            return RedirectResponse(url="/admin/forums?error=Category+not+found", status_code=303)
+        
+        category.name = form_data.get('name')
+        category.description = form_data.get('description', '')
+        category.order = int(form_data.get('display_order', 0))
+        category.is_public = form_data.get('is_visible') == 'on'
+    
+    db.commit()
+    
+    return RedirectResponse(url="/admin/forums?success=Category+saved+successfully", status_code=303)
+
+async def forum_save(db: Session, current_user: User, form_data: dict):
+    """Save forum data"""
+    forum_id = form_data.get('forum_id')
+    is_new = forum_id is None or forum_id == ''
+    
+    # Validate category exists
+    category_id = int(form_data.get('category_id'))
+    category = db.query(Category).filter(Category.id == category_id).first()
+    
+    if not category:
+        return RedirectResponse(url="/admin/forums?error=Category+not+found", status_code=303)
+    
+    if is_new:
+        # Create new forum
+        forum = Forum(
+            name=form_data.get('name'),
+            description=form_data.get('description', ''),
+            category_id=category_id,
+            order=int(form_data.get('display_order', 0)),
+            access_level=int(form_data.get('access_level', 0)),
+            is_public=form_data.get('is_visible') == 'on'
+        )
+        db.add(forum)
+    else:
+        # Update existing forum
+        forum = db.query(Forum).filter(Forum.id == int(forum_id)).first()
+        
+        if not forum:
+            return RedirectResponse(url="/admin/forums?error=Forum+not+found", status_code=303)
+        
+        forum.name = form_data.get('name')
+        forum.description = form_data.get('description', '')
+        forum.category_id = category_id
+        forum.order = int(form_data.get('display_order', 0))
+        forum.access_level = int(form_data.get('access_level', 0))
+        forum.is_public = form_data.get('is_visible') == 'on'
+    
+    db.commit()
+    
+    return RedirectResponse(url="/admin/forums?success=Forum+saved+successfully", status_code=303)
+
+# Site settings
+async def site_settings(request: Request, db: Session, current_user: User):
+    """Admin site settings page"""
+    # Placeholder settings data
+    settings = {
+        "general": {
+            "site_name": "CottageWare",
+            "site_description": "A cozy place for software enthusiasts",
+            "site_keywords": "software, cottage, community, forum",
+            "contact_email": "admin@cottageware.com",
+            "items_per_page": 20,
+            "enable_registration": True,
+            "enable_captcha": True
+        },
+        "appearance": {
+            "theme": "dark",
+            "logo": "/content/site-immagery/logo-transparent.svg",
+            "favicon": "/content/site-immagery/logo-transparent.svg",
+            "custom_css": "",
+            "show_online_users": True,
+            "show_statistics": True
+        },
+        "forum": {
+            "enable_signatures": True,
+            "signature_max_length": 200,
+            "enable_avatars": True,
+            "avatar_max_size": 500,  # KB
+            "posts_per_page": 10,
+            "threads_per_page": 20,
+            "hot_thread_threshold": 20,  # replies
+            "enable_attachments": True,
+            "attachment_max_size": 2048,  # KB
+            "allowed_file_types": "jpg,png,gif,pdf,zip"
+        },
+        "security": {
+            "min_password_length": 8,
+            "require_email_verification": True,
+            "login_attempts": 5,
+            "lockout_time": 30,  # minutes
+            "session_timeout": 60,  # minutes
+            "enable_2fa": False,
+            "log_ip_addresses": True
+        },
+        "advanced": {
+            "enable_cache": True,
+            "cache_time": 60,  # minutes
+            "enable_sitemap": True,
+            "sitemap_update_frequency": 24,  # hours
+            "enable_api": False,
+            "maintenance_mode": False,
+            "maintenance_message": "Site is under maintenance. Please check back later."
+        }
+    }
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "settings": settings
+    }
+
+async def settings_save(db: Session, current_user: User, form_data: dict):
+    """Save site settings"""
+    # Get the settings section
+    section = form_data.get('section', 'general')
+    
+    # In a real implementation, we would save these to a database table
+    # For now, we'll just simulate success
+    
+    # Perform actions based on settings
+    if section == 'advanced':
+        # Handle cache clearing
+        if form_data.get('clear_cache') == 'on':
+            # Simulate cache clearing
+            pass
+        
+        # Handle sitemap regeneration
+        if form_data.get('regenerate_sitemap') == 'on':
+            # Simulate sitemap regeneration
+            pass
+        
+        # Handle maintenance mode
+        maintenance_mode = form_data.get('maintenance_mode') == 'on'
+        # In a real implementation, we would update a config file or database setting
+    
+    # Log the settings change
+    print(f"Settings updated by {current_user.username} in section: {section}")
+    
+    return RedirectResponse(
+        url=f"/admin/settings?success=Settings+saved+successfully&tab={section}",
+        status_code=303
+    )
+
+async def category_form(request: Request, db: Session, current_user: User, category_id: Optional[int] = None):
+    """Category form for create/edit"""
+    category = None
+    if category_id:
+        category = db.query(Category).filter(Category.id == category_id).first()
+        if not category:
+            return RedirectResponse(url="/admin/forums?error=Category+not+found", status_code=303)
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "category": category
+    }
+
+async def forum_form(request: Request, db: Session, current_user: User, forum_id: Optional[int] = None):
+    """Forum form for create/edit"""
+    forum = None
+    if forum_id:
+        forum = db.query(Forum).filter(Forum.id == forum_id).first()
+        if not forum:
+            return RedirectResponse(url="/admin/forums?error=Forum+not+found", status_code=303)
+    
+    # Get categories for the dropdown
+    categories = db.query(Category).order_by(Category.display_order).all()
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "forum": forum,
+        "categories": categories
+    }
