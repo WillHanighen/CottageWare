@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/forum-layout.css">
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -58,100 +59,105 @@
           <a href="/forum/private" class="btn btn-secondary"><i class="fas fa-lock"></i> Private Forums</a>
           {% endif %}
           {% if current_user %}
-          <a href="#" class="btn post-thread-btn"><i class="fas fa-plus"></i> POST THREAD</a>
           {% else %}
           <a href="/login?next=/forum" class="btn"><i class="fas fa-sign-in-alt"></i> LOGIN TO POST</a>
           {% endif %}
         </div>
       </div>
       
-      <!-- Forum Categories -->
-      <div class="forum-categories">
-        <div class="category">
-          {% for category in categories %}
-          <div class="category-header">
-            <h3>{{ category.name }}</h3>
+      <!-- Main Forum Content with Sidebar -->
+      <div class="forum-content">
+        <!-- Forum Categories -->
+        <div class="forum-categories">
+          <div class="category">
+            {% for category in categories %}
+            <div class="category-header">
+              <h3>{{ category.name }}</h3>
+            </div>
+            
+            <!-- Forums List -->
+            <div class="forums-list">
+              {% for forum in category.forums %}
+              <div class="forum-item">
+                <div class="forum-icon">
+                  <i class="{{ forum.icon or 'fas fa-comments' }}"></i>
+                </div>
+                <div class="forum-info">
+                  <h4><a href="/forum/{{ forum.id }}">{{ forum.name }}</a></h4>
+                  <p>{{ forum.description }}</p>
+                </div>
+                <div class="forum-stats">
+                  <div class="stat">
+                    <span class="label">Threads</span>
+                    <span class="value">{{ forum.threads|length }}</span>
+                  </div>
+                  <div class="stat">
+                    <span class="label">Posts</span>
+                    <span class="value">{{ forum.post_count }}</span>
+                  </div>
+                </div>
+                <div class="forum-latest">
+                  {% if forum.latest_thread %}
+                  <div class="latest-title">Latest: <a href="/thread/{{ forum.latest_thread.id }}">{{ forum.latest_thread.title }}</a></div>
+                  <div class="latest-time">{{ forum.latest_thread.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
+                  <div class="latest-user">{{ forum.latest_thread.author.username }}</div>
+                  {% else %}
+                  <div class="latest-title">No threads yet</div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+              {% if not category.forums %}
+              <div class="forum-empty">No forums available in this category.</div>
+              {% endif %}
+            </div>
+            {% endfor %}
+            {% if not categories %}
+            <div class="category-empty">
+              <h3>No public categories found</h3>
+              <p>Public forums will appear here once they are created by an administrator.</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="forum-sidebar">
+          <!-- Members Online -->
+          <div class="members-online">
+            <div class="members-header">
+              <h3>MEMBERS ONLINE</h3>
+            </div>
+            <div class="members-list" id="online-members-list">
+              <!-- Will be populated via WebSocket -->
+            </div>
+            <div class="members-stats" id="members-stats">
+              <p>Total: {{ total_online }} (members: {{ online_users_count }}, guests: {{ guest_count }})</p>
+            </div>
           </div>
           
-          <!-- Forums List -->
-          <div class="forums-list">
-            {% for forum in category.forums %}
-            <div class="forum-item">
-              <div class="forum-icon">
-                <i class="{{ forum.icon or 'fas fa-comments' }}"></i>
-              </div>
-              <div class="forum-info">
-                <h4><a href="/forum/{{ forum.id }}">{{ forum.name }}</a></h4>
-                <p>{{ forum.description }}</p>
-              </div>
-              <div class="forum-stats">
-                <div class="stat">
-                  <span class="label">Threads</span>
-                  <span class="value">{{ forum.threads|length }}</span>
-                </div>
-                <div class="stat">
-                  <span class="label">Posts</span>
-                  <span class="value">{{ forum.post_count }}</span>
+          <!-- Latest Posts -->
+          <div class="latest-posts">
+            <div class="latest-posts-header">
+              <h3>LATEST POSTS</h3>
+            </div>
+            <div class="latest-posts-list">
+              {% for thread in recent_threads %}
+              <div class="latest-post">
+                <div class="post-title"><a href="/thread/{{ thread.id }}">{{ thread.title }}</a></div>
+                <div class="post-meta">
+                  <span class="post-author">{{ thread.author.username }}</span>
+                  <span class="post-time">{{ thread.created_at.strftime('%m/%d/%Y %H:%M') }}</span>
                 </div>
               </div>
-              <div class="forum-latest">
-                {% if forum.latest_thread %}
-                <div class="latest-title">Latest: <a href="/thread/{{ forum.latest_thread.id }}">{{ forum.latest_thread.title }}</a></div>
-                <div class="latest-time">{{ forum.latest_thread.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
-                <div class="latest-user">{{ forum.latest_thread.author.username }}</div>
-                {% else %}
-                <div class="latest-title">No threads yet</div>
-                {% endif %}
-              </div>
+              {% endfor %}
+              {% if not recent_threads %}
+              <div class="latest-posts-empty">No recent posts available.</div>
+              {% endif %}
             </div>
-            {% endfor %}
-            {% if not category.forums %}
-            <div class="forum-empty">No forums available in this category.</div>
-            {% endif %}
-          </div>
-          {% endfor %}
-          {% if not categories %}
-          <div class="category-empty">
-            <h3>No public categories found</h3>
-            <p>Public forums will appear here once they are created by an administrator.</p>
-          </div>
-          {% endif %}
           </div>
         </div>
-        
-        <!-- Members Online -->
-        <div class="members-online">
-          <div class="members-header">
-            <h3>MEMBERS ONLINE</h3>
-          </div>
-          <div class="members-list" id="online-members-list">
-            <!-- Will be populated via WebSocket -->
-          </div>
-          <div class="members-stats" id="members-stats">
-            <p>Total: {{ total_online }} (members: {{ online_users_count }}, guests: {{ guest_count }})</p>
-          </div>
-        </div>
-        
-        <!-- Latest Posts -->
-        <div class="latest-posts">
-          <div class="latest-posts-header">
-            <h3>LATEST POSTS</h3>
-          </div>
-          <div class="latest-posts-list">
-            {% for thread in recent_threads %}
-            <div class="latest-post">
-              <div class="post-title"><a href="/thread/{{ thread.id }}">{{ thread.title }}</a></div>
-              <div class="post-meta">
-                <span class="post-author">{{ thread.author.username }}</span>
-                <span class="post-time">{{ thread.created_at.strftime('%m/%d/%Y %H:%M') }}</span>
-              </div>
-            </div>
-            {% endfor %}
-            {% if not recent_threads %}
-            <div class="latest-posts-empty">No recent posts available.</div>
-            {% endif %}
-          </div>
-        </div>
+      </div>
       </div>
     </section>
   </main>

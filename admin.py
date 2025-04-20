@@ -643,3 +643,48 @@ async def forum_form(request: Request, db: Session, current_user: User, forum_id
         "forum": forum,
         "categories": categories
     }
+
+# Thread management
+async def thread_list(request: Request, db: Session, current_user: User, page: int = 1, per_page: int = 10):
+    """List all threads with pagination"""
+    # Count total threads
+    total = db.query(Thread).count()
+    total_pages = (total + per_page - 1) // per_page
+    
+    # Get threads with pagination
+    threads = db.query(Thread).order_by(Thread.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    
+    return {
+        "request": request,
+        "current_user": current_user,
+        "threads": threads,
+        "page": page,
+        "total_pages": total_pages
+    }
+
+async def thread_delete(db: Session, current_user: User, thread_id: int):
+    """Delete a thread and all its posts"""
+    thread = db.query(Thread).filter(Thread.id == thread_id).first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    
+    # Delete all posts in the thread
+    db.query(Post).filter(Post.thread_id == thread_id).delete()
+    
+    # Delete thread
+    db.delete(thread)
+    db.commit()
+    
+    return {"success": True}
+
+async def thread_toggle_sticky(db: Session, current_user: User, thread_id: int):
+    """Toggle thread sticky status"""
+    thread = db.query(Thread).filter(Thread.id == thread_id).first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    
+    # Toggle sticky status
+    thread.is_sticky = not thread.is_sticky
+    db.commit()
+    
+    return {"success": True, "is_sticky": thread.is_sticky}

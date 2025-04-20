@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CottageWare - Edit Thread</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/forum-edit.css">
+  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  {% include 'includes/navbar.html' %}
+
+  <!-- Main Content -->
+  <main class="container">
+    <section class="edit-thread-section">
+      <div class="thread-breadcrumb">
+        <a href="/forum">Forums</a> &gt; 
+        <a href="/forum/{{ thread.forum.category_id }}">{{ thread.forum.category.name }}</a> &gt; 
+        <a href="/forum/{{ thread.forum_id }}">{{ thread.forum.name }}</a> &gt; 
+        <a href="/thread/{{ thread.id }}">{{ thread.title }}</a> &gt;
+        <span>Edit Thread</span>
+      </div>
+      
+      <div class="section-header">
+        <h2><i class="fas fa-edit"></i> Edit Thread</h2>
+      </div>
+      
+      <div class="edit-thread-form-container">
+        <form class="edit-thread-form" method="post" action="/thread/{{ thread.id }}/edit">
+          <div class="form-group">
+            <label for="title">Thread Title</label>
+            <input type="text" name="title" id="title" value="{{ thread.title }}" required>
+          </div>
+          <div class="form-group">
+            <label for="content">Thread Content</label>
+            <textarea name="content" id="content" rows="10" required>{{ thread.content }}</textarea>
+          </div>
+          <div class="form-actions">
+            <a href="/thread/{{ thread.id }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+      
+      <div class="edit-thread-info">
+        <p><i class="fas fa-info-circle"></i> Editing thread in forum: <strong>{{ thread.forum.name }}</strong></p>
+        <p>Originally posted: {{ thread.created_at.strftime('%b %d, %Y %H:%M') }}</p>
+        {% if thread.created_at != thread.updated_at %}
+          <p>Last edited: {{ thread.updated_at.strftime('%b %d, %Y %H:%M') }}</p>
+        {% endif %}
+      </div>
+      
+      <!-- Delete Thread Section -->
+      {% if current_user and (current_user.id == thread.author_id or (current_user.profile and current_user.profile.account_tier >= 4)) %}
+      <div class="delete-button-container">
+        <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
+        <p>Deleting this thread will permanently remove it and all replies. This action cannot be undone.</p>
+        <button id="delete-thread-btn" class="btn btn-danger"><i class="fas fa-trash-alt"></i> Delete Thread</button>
+      </div>
+      
+      <!-- Delete Confirmation Modal -->
+      <div id="delete-modal" class="modal">
+        <div class="modal-content">
+          <h3><i class="fas fa-exclamation-triangle"></i> Confirm Thread Deletion</h3>
+          <p>Are you sure you want to delete this thread? This will permanently delete the thread and all its replies. This action cannot be undone.</p>
+          <div class="modal-actions">
+            <button id="cancel-delete" class="btn btn-secondary">Cancel</button>
+            <a href="/thread/{{ thread.id }}/delete" class="btn btn-danger">Delete Thread</a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </section>
+  </main>
+
+  {% include 'includes/footer.html' %}
+  
+  <script>
+    // Delete modal functionality
+    const deleteBtn = document.getElementById('delete-thread-btn');
+    const deleteModal = document.getElementById('delete-modal');
+    const cancelDelete = document.getElementById('cancel-delete');
+    
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', function() {
+        deleteModal.classList.add('active');
+      });
+    }
+    
+    if (cancelDelete) {
+      cancelDelete.addEventListener('click', function() {
+        deleteModal.classList.remove('active');
+      });
+    }
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+      if (event.target === deleteModal) {
+        deleteModal.classList.remove('active');
+      }
+    });
+  </script>
+</body>
+</html>

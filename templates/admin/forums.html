@@ -199,8 +199,8 @@
                         <a href="/admin/threads/{{ thread.id }}/edit" class="action-btn edit-btn" title="Edit">
                           <i class="fas fa-edit"></i>
                         </a>
-                        <a href="/admin/threads/{{ thread.id }}/pin" class="action-btn pin-btn" title="{{ 'Unpin' if thread.is_pinned else 'Pin' }}">
-                          <i class="fas fa-{{ 'thumbtack' if thread.is_pinned else 'thumbtack' }}"></i>
+                        <a href="/admin/threads/{{ thread.id }}/pin" class="action-btn pin-btn" title="{{ 'Unpin' if thread.is_sticky else 'Pin' }}">
+                          <i class="fas fa-thumbtack"></i>
                         </a>
                         <button class="action-btn delete-btn" data-id="{{ thread.id }}" data-type="thread" title="Delete">
                           <i class="fas fa-trash-alt"></i>

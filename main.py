@@ -31,7 +31,8 @@ from database import SessionLocal, engine, Base
 # Import admin functionality
 from admin import (admin_dashboard, product_list, product_form, product_save, product_toggle, product_delete, 
                 user_list, user_form, user_toggle, user_delete, user_save, forum_management, category_form, forum_form, 
-                category_save, forum_save, site_settings, settings_save, admin_required)
+                category_save, forum_save, site_settings, settings_save, admin_required, thread_list, thread_delete,
+                thread_toggle_sticky)
 
 # Import authentication functions
 from auth import (
@@ -605,8 +606,8 @@ async def admin_save_forum(
 @app.get("/admin/settings", response_class=HTMLResponse)
 async def admin_settings(request: Request, db: Session = Depends(get_db), current_user: User = Depends(admin_required())):
     """Admin site settings page"""
-    template_data = await site_settings(request, db, current_user)
-    return templates.TemplateResponse("admin/settings.html", template_data)
+    context = await site_settings(request, db, current_user)
+    return templates.TemplateResponse("admin/settings.html", context)
 
 @app.post("/admin/settings/save")
 async def admin_save_settings(
@@ -616,9 +617,22 @@ async def admin_save_settings(
     current_user: User = Depends(admin_required())
 ):
     """Save site settings"""
-    # Get all form data
     form_data = await request.form()
-    return await settings_save(db, current_user, dict(form_data))
+    result = await settings_save(db, current_user, dict(form_data))
+    return RedirectResponse("/admin/settings?success=Settings+saved", status_code=303)
+
+# Thread Management Routes
+@app.get("/admin/threads/delete/{thread_id}")
+async def admin_delete_thread(thread_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required())):
+    """Delete a thread"""
+    result = await thread_delete(db, current_user, thread_id)
+    return RedirectResponse("/admin/forums?tab=threads&success=Thread+deleted", status_code=303)
+
+@app.get("/admin/threads/pin/{thread_id}")
+async def admin_toggle_thread_sticky(thread_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required())):
+    """Toggle thread sticky status"""
+    result = await thread_toggle_sticky(db, current_user, thread_id)
+    return RedirectResponse("/admin/forums?tab=threads&success=Thread+updated", status_code=303)
 
 # Route for replying to a thread
 @app.post("/thread/{thread_id}/reply")
@@ -667,6 +681,200 @@ async def reply_to_thread(thread_id: int, content: str = Form(...), db: Session 
     db.commit()
     
     return RedirectResponse(url=f"/thread/{thread_id}#post-{new_post.id}", status_code=303)
+
+# Route for editing a post
+@app.get("/post/{post_id}/edit", response_class=HTMLResponse)
+async def edit_post_form(post_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    """
+    Displays the form to edit a post.
+    """
+    # Redirect to login if user is not authenticated
+    if not current_user:
+        return RedirectResponse(url=f"/login?next=/post/{post_id}/edit", status_code=303)
+    
+    # Get the post
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check if user is the author of the post or an admin
+    is_admin = current_user.profile and current_user.profile.account_tier >= 4
+    if post.author_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="You don't have permission to edit this post")
+    
+    # Get the thread for navigation
+    thread = post.thread
+    
+    return templates.TemplateResponse(
+        "forum/edit_post.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "post": post,
+            "thread": thread
+        }
+    )
+
+@app.post("/post/{post_id}/edit")
+async def update_post(post_id: int, content: str = Form(...), db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    """
+    Handles POST requests to update a post.
+    """
+    # Redirect to login if user is not authenticated
+    if not current_user:
+        return RedirectResponse(url=f"/login?next=/post/{post_id}/edit", status_code=303)
+    
+    # Get the post
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check if user is the author of the post or an admin
+    is_admin = current_user.profile and current_user.profile.account_tier >= 4
+    if post.author_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="You don't have permission to edit this post")
+    
+    # Process content for offensive language
+    is_clean, filtered_content, error = filter_offensive_content(content)
+    if not is_clean:
+        content = filtered_content
+        print(f"[DEBUG] Content filtered: {error}")
+    
+    # Update the post
+    post.content = content
+    post.updated_at = datetime.now()
+    
+    # Update thread's updated_at timestamp
+    thread = post.thread
+    thread.updated_at = datetime.now()
+    
+    db.commit()
+    
+    return RedirectResponse(url=f"/thread/{post.thread_id}#post-{post.id}", status_code=303)
+
+# Route for editing a thread
+@app.get("/thread/{thread_id}/edit", response_class=HTMLResponse)
+async def edit_thread_form(thread_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    """
+    Displays the form to edit a thread.
+    """
+    # Redirect to login if user is not authenticated
+    if not current_user:
+        return RedirectResponse(url=f"/login?next=/thread/{thread_id}/edit", status_code=303)
+    
+    # Get the thread
+    thread = db.query(Thread).filter(Thread.id == thread_id).first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    
+    # Check if user is the author of the thread or an admin
+    is_admin = current_user.profile and current_user.profile.account_tier >= 4
+    if thread.author_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="You don't have permission to edit this thread")
+    
+    return templates.TemplateResponse(
+        "forum/edit_thread.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "thread": thread
+        }
+    )
+
+@app.post("/thread/{thread_id}/edit")
+async def update_thread(thread_id: int, title: str = Form(...), content: str = Form(...), db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    """
+    Handles POST requests to update a thread.
+    """
+    # Redirect to login if user is not authenticated
+    if not current_user:
+        return RedirectResponse(url=f"/login?next=/thread/{thread_id}/edit", status_code=303)
+    
+    # Get the thread
+    thread = db.query(Thread).filter(Thread.id == thread_id).first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    
+    # Check if user is the author of the thread or an admin
+    is_admin = current_user.profile and current_user.profile.account_tier >= 4
+    if thread.author_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="You don't have permission to edit this thread")
+    
+    # Process content for offensive language
+    is_clean, filtered_content, error = filter_offensive_content(content)
+    if not is_clean:
+        content = filtered_content
+        print(f"[DEBUG] Content filtered: {error}")
+    
+    # Update the thread
+    thread.title = title
+    thread.content = content
+    thread.updated_at = datetime.now()
+    
+    db.commit()
+    
+    return RedirectResponse(url=f"/thread/{thread.id}", status_code=303)
+
+# Route for deleting a thread
+@app.get("/thread/{thread_id}/delete")
+async def delete_thread(thread_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    """
+    Handles requests to delete a thread.
+    """
+    # Redirect to login if user is not authenticated
+    if not current_user:
+        return RedirectResponse(url=f"/login?next=/thread/{thread_id}", status_code=303)
+    
+    # Get the thread
+    thread = db.query(Thread).filter(Thread.id == thread_id).first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    
+    # Check if user is the author of the thread or an admin
+    is_admin = current_user.profile and current_user.profile.account_tier >= 4
+    if thread.author_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="You don't have permission to delete this thread")
+    
+    # Get the forum ID for redirection after deletion
+    forum_id = thread.forum_id
+    
+    # Delete all posts in the thread
+    db.query(Post).filter(Post.thread_id == thread_id).delete()
+    
+    # Delete the thread
+    db.delete(thread)
+    db.commit()
+    
+    return RedirectResponse(url=f"/forum/{forum_id}", status_code=303)
+
+# Route for deleting a post
+@app.get("/post/{post_id}/delete")
+async def delete_post(post_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    """
+    Handles requests to delete a post.
+    """
+    # Redirect to login if user is not authenticated
+    if not current_user:
+        return RedirectResponse(url=f"/login?next=/post/{post_id}", status_code=303)
+    
+    # Get the post
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check if user is the author of the post or an admin
+    is_admin = current_user.profile and current_user.profile.account_tier >= 4
+    if post.author_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="You don't have permission to delete this post")
+    
+    # Get the thread ID for redirection after deletion
+    thread_id = post.thread_id
+    
+    # Delete the post
+    db.delete(post)
+    db.commit()
+    
+    return RedirectResponse(url=f"/thread/{thread_id}", status_code=303)
 
 # Route for posting to the shoutbox
 @app.post("/shoutbox", response_class=RedirectResponse)

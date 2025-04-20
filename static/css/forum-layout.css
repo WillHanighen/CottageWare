@@ -1,0 +1,69 @@
+/* Forum Layout CSS */
+
+/* Main forum container layout */
+.forum-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Forum content layout */
+.forum-content {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 20px;
+}
+
+/* Forum categories section */
+.forum-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  grid-column: 1 / 2;
+}
+
+/* Sidebar section */
+.forum-sidebar {
+  grid-column: 2 / 3;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Members online section */
+.members-online {
+  background-color: #222;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 0;
+}
+
+/* Latest posts section */
+.latest-posts {
+  background-color: #222;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .forum-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .forum-categories,
+  .forum-sidebar {
+    grid-column: 1 / 2;
+  }
+}
+
+/* Overrides for existing styles */
+.forum-categories {
+  display: flex;
+  margin-top: 0;
+}
+
+.category {
+  width: 100%;
+}
