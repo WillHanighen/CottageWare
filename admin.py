@@ -635,7 +635,7 @@ async def forum_form(request: Request, db: Session, current_user: User, forum_id
             return RedirectResponse(url="/admin/forums?error=Forum+not+found", status_code=303)
     
     # Get categories for the dropdown
-    categories = db.query(Category).order_by(Category.display_order).all()
+    categories = db.query(Category).order_by(Category.order).all()
     
     return {
         "request": request,

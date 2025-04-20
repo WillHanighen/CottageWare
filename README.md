@@ -122,5 +122,5 @@ The application uses WebSockets for real-time features:
 5. Submit a pull request
 
 ## License
-
+## Just kidding not lisenced yet
 This project is licensed under the MIT License - see the LICENSE file for details.
