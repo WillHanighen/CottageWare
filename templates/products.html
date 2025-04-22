@@ -11,6 +11,7 @@
   <!-- Sell.app CSS -->
   <link href="https://cdn.sell.app/embed/style.css" rel="stylesheet" />
   <link href="/static/css/sellapp.css" rel="stylesheet" />
+  <link href="/static/css/product-popup.css" rel="stylesheet" />
 </head>
 <body>
   {% include 'includes/navbar.html' %}
@@ -18,107 +19,137 @@
   <!-- Main Content -->
   <main class="container">
     <section class="products-hero">
-      <h2>Premium <span>Gaming</span> Products</h2>
-      <p>CottageWare offers the best gaming products on the market. Browse our selection below.</p>
+      <h2>PREMIUM <span>GAMING PRODUCTS</span></h2>
+      <p style="color: #ffffff;">CottageWare offers the best gaming products on the market. Browse our selection below.</p>
     </section>
+
+        <!-- Features Section -->
+        <section class="features">
+          <div class="feature-card">
+            <div class="icon"><i class="fas fa-gamepad"></i></div>
+            <h3>Premium Gaming Products</h3>
+            <p>CottageWare offers high-quality gaming products at competitive prices. Enhance your gaming experience today!</p>
+          </div>
+          <div class="feature-card">
+            <div class="icon"><i class="fas fa-shield-alt"></i></div>
+            <h3>Trusted Quality</h3>
+            <p>We only sell the most reliable and tested products to ensure you get the best gaming experience possible.</p>
+          </div>
+          <div class="feature-card">
+            <div class="icon"><i class="fas fa-headset"></i></div>
+            <h3>24/7 Support</h3>
+            <p>Our dedicated support team is available around the clock to assist with any questions or issues you may have.</p>
+          </div>
+        </section>
     
     <!-- Featured Product -->
     <section class="featured-products">
-      <h2 class="section-title">Featured <span>Products</span></h2>
+      <h2 class="section-title" style="text-align: center; display: block; width: 100%;">Featured <span>Products</span></h2>
       
-      <!-- Sell.app Featured Product -->
-      <div class="sellapp-featured-product">
-        <div class="product-card featured-sellapp">
-          <div class="product-image">
-            <div class="product-image-placeholder">
-              <i class="fas fa-crown"></i>
+      <!-- Featured Products from Database -->
+      <div class="sellapp-products" style="display: flex; justify-content: center; flex-wrap: wrap; gap: 20px; max-width: 1200px; margin: 0 auto;">
+        {% if featured_products %}
+          {% for product in featured_products %}
+          <div class="product-card" style="width: 300px; flex: 0 0 auto;">
+            <div class="product-image">
+              {% if product.image_url %}
+                <img src="{{ product.image_url }}" alt="{{ product.name }}" class="product-image">
+              {% else %}
+                <div class="product-image-placeholder">
+                  <i class="fas fa-gamepad"></i>
+                </div>
+              {% endif %}
+              <div class="product-badge">Featured</div>
             </div>
-            <div class="product-badge">Featured</div>
-          </div>
-          <div class="product-content">
-            <h3 class="product-title">Premium Gaming Package</h3>
-            <p class="product-description">Get access to our exclusive gaming content and tools with our premium package.</p>
-            <div class="product-price">$49.99</div>
-            <div class="sellapp-button-container">
-              <button
-                data-sell-store="60377"
-                data-sell-product="293918"
-                data-sell-theme=""
-                data-sell-darkmode="true"
-              >
-                Purchase
-              </button>
+            <div class="product-content">
+              <h3 class="product-title">{{ product.name }}</h3>
+              <div class="product-description">{{ product.short_description_html|safe }}</div>
+              {% if product.sale_price and product.sale_price != 'None' and product.sale_price != 'none' %}
+                <div class="product-price"><span class="original-price"><s>${{ product.price }}</s></span> ${{ product.sale_price }}</div>
+              {% else %}
+                <div class="product-price">${{ product.price }}</div>
+              {% endif %}
+              <div class="sellapp-button-container">
+                <button
+                  data-sell-store="{{ sellapp_store_id }}"
+                  data-sell-product="{{ product.product_id }}"
+                  data-sell-theme=""
+                  data-sell-darkmode="true"
+                >
+                  Purchase
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
-    
-    <section class="products-grid">
-      <h2 class="section-title text-center">All <span>Products</span></h2>
-      <!-- Sell.app Embedded Products -->
-      <div class="sellapp-products">
-        {% for product in sellapp_products %}
-          <div class="product-card">
+          {% endfor %}
+        {% else %}
+          <div class="product-card" style="width: 300px; flex: 0 0 auto;">
             <div class="product-image">
               <div class="product-image-placeholder">
                 <i class="fas fa-gamepad"></i>
               </div>
+              <div class="product-badge">Featured</div>
             </div>
             <div class="product-content">
-              <h3 class="product-title">{{ product.name|default('Gaming Product') }}</h3>
-              <p class="product-description">{{ product.description|default('High-quality gaming product from CottageWare.') }}</p>
-              <div class="product-price">{{ product.price|default('$29.99') }}</div>
+              <h3 class="product-title">Premium Gaming Package</h3>
+              <p class="product-description">Get access to our exclusive gaming content and tools with our premium package.</p>
+              <div class="product-price">$49.99</div>
               <div class="sellapp-button-container">
                 <button
                   data-sell-store="{{ sellapp_store_id }}"
-                  data-sell-product="{{ product.id }}"
-                  data-sell-theme="{{ product.theme|default('') }}"
-                  data-sell-darkmode="{{ product.darkmode|default('true') }}"
+                  data-sell-product="293918"
+                  data-sell-theme=""
+                  data-sell-darkmode="true"
                 >
-                  {{ product.button_text|default('Purchase') }}
+                  Purchase
+                </button>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+      
+    </section>
+    
+    <section class="products-grid">
+      <h2 class="section-title" style="text-align: center; display: block; width: 100%;">All <span>Products</span></h2>
+      <!-- All Products from Database -->
+      <div class="sellapp-products" style="display: flex; justify-content: center; flex-wrap: wrap; gap: 20px; max-width: 1200px; margin: 0 auto;">
+        {% for product in sellapp_products %}
+          <div class="product-card" style="width: 300px; flex: 0 0 auto;">
+            <div class="product-image">
+              {% if product.image_url %}
+                <img src="{{ product.image_url }}" alt="{{ product.name }}" class="product-image">
+              {% else %}
+                <div class="product-image-placeholder">
+                  <i class="fas fa-gamepad"></i>
+                </div>
+              {% endif %}
+              {% if product.is_featured %}
+                <div class="product-badge">Featured</div>
+              {% endif %}
+            </div>
+            <div class="product-content">
+              <h3 class="product-title">{{ product.name }}</h3>
+              <div class="product-description">{{ product.short_description_html|safe }}</div>
+              {% if product.sale_price and product.sale_price != 'None' and product.sale_price != 'none' %}
+                <div class="product-price"><span class="original-price"><s>${{ product.price }}</s></span> ${{ product.sale_price }}</div>
+              {% else %}
+                <div class="product-price">${{ product.price }}</div>
+              {% endif %}
+              <div class="sellapp-button-container">
+                <button
+                  data-sell-store="{{ sellapp_store_id }}"
+                  data-sell-product="{{ product.product_id }}"
+                  data-sell-theme=""
+                  data-sell-darkmode="true"
+                >
+                  Purchase
                 </button>
               </div>
             </div>
           </div>
         {% endfor %}
-      </div>
-    </section>
-    
-
-    <!-- Reseller Information -->
-    <section class="reseller-info">
-      <div class="reseller-card">
-        <div class="reseller-icon">
-          <i class="fas fa-handshake"></i>
-        </div>
-        <div class="reseller-content">
-          <h3>Become a Reseller</h3>
-          <p>Join our reseller program and start earning money today. We offer competitive commissions and excellent support.</p>
-          <a href="/forum/3" class="btn">Learn More</a>
-        </div>
-      </div>
-      
-      <div class="reseller-card">
-        <div class="reseller-icon">
-          <i class="fas fa-chart-line"></i>
-        </div>
-        <div class="reseller-content">
-          <h3>Reseller Benefits</h3>
-          <p>Our resellers enjoy exclusive benefits, including priority support, higher commissions, and access to special promotions.</p>
-          <a href="/forum/6" class="btn">View Benefits</a>
-        </div>
-      </div>
-      
-      <div class="reseller-card">
-        <div class="reseller-icon">
-          <i class="fas fa-question-circle"></i>
-        </div>
-        <div class="reseller-content">
-          <h3>Reseller Support</h3>
-          <p>We provide comprehensive support to all our resellers. Have questions? Check our support forum or contact us directly.</p>
-          <a href="/forum/7" class="btn">Get Support</a>
-        </div>
       </div>
     </section>
 
@@ -128,5 +159,8 @@
   
   <!-- Sell.app JavaScript -->
   <script src="https://cdn.sell.app/embed/script.js" type="module"></script>
+  
+  <!-- Product Popup JavaScript -->
+  <script src="/static/js/product-popup.js"></script>
 </body>
 </html>

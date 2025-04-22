@@ -156,24 +156,27 @@ async def product_save(request: Request, db: Session, current_user: User):
     is_featured = form.get("is_featured") == "on"
     
     # Handle image upload
-    image_file = form.get("image")
     image_url = None
+    image = form.get("image")
     
-    if image_file and isinstance(image_file, UploadFile) and image_file.filename:
+    if image and hasattr(image, "filename") and image.filename:
         # Generate unique filename
-        ext = os.path.splitext(image_file.filename)[1]
+        ext = os.path.splitext(image.filename)[1]
         filename = f"{uuid.uuid4()}{ext}"
         
         # Ensure directory exists
-        os.makedirs("static/uploads/products", exist_ok=True)
+        upload_dir = "static/uploads/products"
+        os.makedirs(upload_dir, exist_ok=True)
         
         # Save file
-        file_path = f"static/uploads/products/{filename}"
+        file_path = f"{upload_dir}/{filename}"
+        contents = await image.read()
         with open(file_path, "wb") as f:
-            f.write(await image_file.read())
+            f.write(contents)
         
         # Set image URL
         image_url = f"/static/uploads/products/{filename}"
+        print(f"Image uploaded successfully: {file_path}")
     
     if product_id and product_id.isdigit():
         # Update existing product

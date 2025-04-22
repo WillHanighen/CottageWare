@@ -44,7 +44,7 @@
             
             <div class="form-group">
               <label for="sale_price">Sale Price ($)</label>
-              <input type="text" id="sale_price" name="sale_price" value="{{ product.sale_price if product else '' }}">
+              <input type="text" id="sale_price" name="sale_price" value="{% if product and product.sale_price and product.sale_price != 'None' and product.sale_price != 'none' %}{{ product.sale_price }}{% endif %}">
               <div class="form-help">Leave empty if not on sale</div>
             </div>
           </div>
@@ -70,7 +70,7 @@
               </div>
             {% endif %}
             <input type="file" id="image" name="image" accept="image/*">
-            <div class="form-help">Leave empty to keep current image (if editing)</div>
+            <div class="form-help">Leave empty to keep current image (if editing). Recommended size: 500x500px.</div>
           </div>
           
           <div class="form-row">

@@ -25,7 +25,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Import models and database
-from models import User, Role, Category, Forum, Thread, Post, Shoutbox, UserProfile, ThreadView
+from models import User, Role, Category, Forum, Thread, Post, Shoutbox, UserProfile, ThreadView, Product
 from database import SessionLocal, engine, Base
 
 # Import admin functionality
@@ -147,8 +147,20 @@ async def read_home(request: Request, db: Session = Depends(get_db), current_use
     
     # Get Sell.app configuration for the featured product
     sellapp_store_id = os.getenv("SELLAPP_STORE_ID", "60377")
-    sellapp_product_id = os.getenv("SELLAPP_FEATURED_PRODUCT_ID", "293918")
-    sellapp_darkmode = os.getenv("SELLAPP_DARKMODE", "true")
+    
+    # Get featured products from database
+    featured_products = db.query(Product).filter(Product.is_featured == True).all()
+    
+    # Process featured products with markdown and truncate descriptions
+    for product in featured_products:
+        if product.description:
+            product.full_description = render_markdown(product.description)
+            # Create a truncated version for display
+            if len(product.description) > 250:
+                product.short_description = product.description[:250] + "..."
+            else:
+                product.short_description = product.description
+            product.short_description_html = render_markdown(product.short_description)
     
     return templates.TemplateResponse(
         "index.html", 
@@ -157,8 +169,7 @@ async def read_home(request: Request, db: Session = Depends(get_db), current_use
             "current_user": current_user,
             "latest_threads": latest_threads,
             "sellapp_store_id": sellapp_store_id,
-            "sellapp_product_id": sellapp_product_id,
-            "sellapp_darkmode": sellapp_darkmode
+            "featured_products": featured_products
         }
     )
 
@@ -605,7 +616,18 @@ async def admin_save_product(
     current_user: User = Depends(admin_required())
 ):
     """Save product data"""
-    return await product_save(request, db, current_user)
+    # Ensure the upload directory exists
+    os.makedirs("static/uploads/products", exist_ok=True)
+    
+    # Call the product_save function with proper debugging
+    try:
+        result = await product_save(request, db, current_user)
+        return result
+    except Exception as e:
+        print(f"Error saving product: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return RedirectResponse(url="/admin/products?error=Error+saving+product", status_code=303)
 
 @app.get("/admin/products/{product_id}/delete")
 async def admin_delete_product(
@@ -1164,27 +1186,34 @@ async def read_products(request: Request, db: Session = Depends(get_db), current
     """
     # Get Sell.app configuration from environment variables
     sellapp_store_id = os.getenv("SELLAPP_STORE_ID", "60377")
-    sellapp_products_raw = os.getenv("SELLAPP_PRODUCTS", "293918,Purchase,,true").strip().split("\n")
     
-    # Parse product configurations
-    sellapp_products = []
-    for product_line in sellapp_products_raw:
-        if not product_line.strip():
-            continue
-            
-        parts = product_line.split(",")
-        product = {"id": parts[0].strip()}
-        
-        if len(parts) > 1 and parts[1].strip():
-            product["button_text"] = parts[1].strip()
-        
-        if len(parts) > 2 and parts[2].strip():
-            product["theme"] = parts[2].strip()
-            
-        if len(parts) > 3 and parts[3].strip():
-            product["darkmode"] = parts[3].strip()
-            
-        sellapp_products.append(product)
+    # Get products from database and sort alphabetically
+    products = db.query(Product).order_by(Product.name).all()
+    
+    # Get featured products
+    featured_products = db.query(Product).filter(Product.is_featured == True).all()
+    
+    # Process product descriptions with markdown and truncate long descriptions
+    for product in products:
+        # First render markdown
+        if product.description:
+            product.full_description = render_markdown(product.description)
+            # Create a truncated version for display
+            if len(product.description) > 250:
+                product.short_description = product.description[:250] + "..."
+            else:
+                product.short_description = product.description
+            product.short_description_html = render_markdown(product.short_description)
+    
+    # Process featured products similarly
+    for product in featured_products:
+        if product.description:
+            product.full_description = render_markdown(product.description)
+            if len(product.description) > 250:
+                product.short_description = product.description[:250] + "..."
+            else:
+                product.short_description = product.description
+            product.short_description_html = render_markdown(product.short_description)
     
     return templates.TemplateResponse(
         "products.html",
@@ -1193,7 +1222,8 @@ async def read_products(request: Request, db: Session = Depends(get_db), current
             "current_user": current_user,
             "ecommerce_provider": "sellapp",
             "sellapp_store_id": sellapp_store_id,
-            "sellapp_products": sellapp_products,
+            "sellapp_products": products,
+            "featured_products": featured_products,
             "ecommerce_configured": True
         }
     )

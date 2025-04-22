@@ -1,0 +1,164 @@
+/* Product Popup Styling */
+.product-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.product-popup-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.product-popup-content {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  max-width: 900px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(20px);
+  transition: transform 0.3s ease;
+}
+
+.product-popup-overlay.active .product-popup-content {
+  transform: translateY(0);
+}
+
+.product-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #333;
+}
+
+.product-popup-title {
+  font-size: 28px;
+  color: #f8f9fa;
+  margin: 0;
+}
+
+.product-popup-close {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 24px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.product-popup-close:hover {
+  color: #00a8ff;
+}
+
+.product-popup-body {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+@media (min-width: 768px) {
+  .product-popup-body {
+    flex-direction: row;
+    gap: 30px;
+  }
+}
+
+.product-popup-image {
+  flex: 1;
+  margin-bottom: 20px;
+}
+
+@media (min-width: 768px) {
+  .product-popup-image {
+    margin-bottom: 0;
+  }
+}
+
+.product-popup-image img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.product-popup-image-placeholder {
+  width: 100%;
+  height: 300px;
+  background-color: #222;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.product-popup-image-placeholder i {
+  font-size: 80px;
+  color: #00a8ff;
+}
+
+.product-popup-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-popup-description {
+  margin-bottom: 20px;
+  color: #ccc;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+.product-popup-price {
+  font-size: 28px;
+  font-weight: 700;
+  color: #00a8ff;
+  margin-bottom: 20px;
+}
+
+.product-popup-price .original-price {
+  font-size: 20px;
+  color: #999;
+  margin-right: 10px;
+}
+
+.product-popup-actions {
+  margin-top: auto;
+}
+
+/* Prevent body scrolling when popup is open */
+body.popup-open {
+  overflow: hidden;
+}
+
+/* Animation for popup */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.product-popup-content {
+  animation: fadeIn 0.3s ease forwards;
+}

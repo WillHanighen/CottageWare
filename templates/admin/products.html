@@ -16,45 +16,47 @@
   <main class="container">
     <section class="admin-panel">
       <div class="admin-header">
-        <h2><i class="fas fa-shopping-cart"></i> Manage Products</h2>
+        <h2><i class="fas fa-box"></i> Product Management</h2>
         <div class="admin-actions">
-          <a href="/admin" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
           <a href="/admin/products/new" class="btn btn-primary"><i class="fas fa-plus"></i> Add New Product</a>
         </div>
       </div>
 
-      <div class="admin-products">
-        <div class="products-search">
-          <input type="text" id="product-search" placeholder="Search products...">
-          <select id="product-filter">
-            <option value="all">All Products</option>
-            <option value="featured">Featured</option>
-            <option value="regular">Regular</option>
-          </select>
-        </div>
+      <div class="products-search">
+        <input type="text" id="product-search" placeholder="Search products..." class="search-input">
+        <select id="filter-status" class="filter-select">
+          <option value="all">All Products</option>
+          <option value="featured">Featured Only</option>
+          <option value="regular">Regular Only</option>
+        </select>
+      </div>
 
-        <div class="products-table">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Image</th>
-                <th>Name</th>
-                <th>Price</th>
-                <th>Sell.app ID</th>
-                <th>Featured</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% if products %}
-                {% for product in products %}
-                <tr>
-                  <td>{{ product.id }}</td>
+      <div class="products-table">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 80px">Image</th>
+              <th>Name</th>
+              <th>Price</th>
+              <th>Status</th>
+              <th style="width: 120px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="products-list">
+            {% if products %}
+              {% for product in products %}
+                <tr class="product-row" data-featured="{{ product.is_featured }}">
                   <td>
-                    <img src="{{ product.image_url or '/static/images/default-product.png' }}" alt="{{ product.name }}" class="product-thumbnail">
+                    {% if product.image_url %}
+                      <img src="{{ product.image_url }}" alt="{{ product.name }}" class="product-thumbnail">
+                    {% else %}
+                      <div class="product-thumbnail-placeholder">No Image</div>
+                    {% endif %}
                   </td>
-                  <td>{{ product.name }}</td>
+                  <td>
+                    <strong>{{ product.name }}</strong>
+                    <div class="product-id">ID: {{ product.product_id }}</div>
+                  </td>
                   <td>
                     {% if product.sale_price %}
                       <span class="original-price">${{ product.price }}</span>
@@ -63,42 +65,42 @@
                       ${{ product.price }}
                     {% endif %}
                   </td>
-                  <td>{{ product.product_id }}</td>
                   <td>
-                    <span class="status-badge {{ 'active' if product.is_featured else 'inactive' }}">
+                    <span class="status-badge {% if product.is_featured %}active{% else %}inactive{% endif %}">
                       {{ "Featured" if product.is_featured else "Regular" }}
                     </span>
                   </td>
-                  <td class="actions">
-                    <a href="/admin/products/{{ product.id }}/edit" class="action-btn edit-btn" title="Edit">
-                      <i class="fas fa-edit"></i>
-                    </a>
-                    <a href="/admin/products/{{ product.id }}/toggle-featured" class="action-btn toggle-btn" title="{{ 'Remove from Featured' if product.is_featured else 'Make Featured' }}">
-                      <i class="fas fa-{{ 'star' if product.is_featured else 'star-half-alt' }}"></i>
-                    </a>
-                    <button class="action-btn delete-btn" data-id="{{ product.id }}" title="Delete">
-                      <i class="fas fa-trash-alt"></i>
-                    </button>
+                  <td>
+                    <div class="actions">
+                      <a href="/admin/products/{{ product.id }}/edit" class="action-btn edit-btn" title="Edit">
+                        <i class="fas fa-edit"></i>
+                      </a>
+                      <a href="/admin/products/{{ product.id }}/toggle-featured" class="action-btn toggle-btn" title="Toggle Featured">
+                        <i class="fas fa-star"></i>
+                      </a>
+                      <a href="#" onclick="confirmDelete({{ product.id }})" class="action-btn delete-btn" title="Delete">
+                        <i class="fas fa-trash"></i>
+                      </a>
+                    </div>
                   </td>
                 </tr>
-                {% endfor %}
-              {% else %}
-                <tr>
-                  <td colspan="7" class="no-products">No products found. <a href="/admin/products/new">Add a product</a></td>
-                </tr>
-              {% endif %}
-            </tbody>
-          </table>
-        </div>
-        
-        <div class="pagination">
-          {% if total_pages > 1 %}
-            {% for i in range(1, total_pages + 1) %}
-              <a href="/admin/products?page={{ i }}" class="page-link {{ 'active' if i == current_page else '' }}">{{ i }}</a>
-            {% endfor %}
-          {% endif %}
-        </div>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="5" class="no-products">No products found. <a href="/admin/products/new">Add your first product</a></td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
       </div>
+
+      {% if total_pages > 1 %}
+        <div class="pagination">
+          {% for i in range(1, total_pages + 1) %}
+            <a href="/admin/products?page={{ i }}" class="page-link {% if i == current_page %}active{% endif %}">{{ i }}</a>
+          {% endfor %}
+        </div>
+      {% endif %}
     </section>
   </main>
   
@@ -120,11 +122,12 @@
     // Product search functionality
     document.getElementById('product-search').addEventListener('input', function() {
       const searchValue = this.value.toLowerCase();
-      const rows = document.querySelectorAll('tbody tr');
+      const rows = document.querySelectorAll('.product-row');
       
       rows.forEach(row => {
-        const productName = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
-        if (productName.includes(searchValue)) {
+        const productName = row.querySelector('td:nth-child(2) strong').textContent.toLowerCase();
+        const productId = row.querySelector('.product-id').textContent.toLowerCase();
+        if (productName.includes(searchValue) || productId.includes(searchValue)) {
           row.style.display = '';
         } else {
           row.style.display = 'none';
@@ -133,57 +136,29 @@
     });
     
     // Product filter functionality
-    document.getElementById('product-filter').addEventListener('change', function() {
+    document.getElementById('filter-status').addEventListener('change', function() {
       const filterValue = this.value;
-      const rows = document.querySelectorAll('tbody tr');
+      const rows = document.querySelectorAll('.product-row');
       
       rows.forEach(row => {
-        if (filterValue === 'all') {
+        const isFeatured = row.getAttribute('data-featured') === 'True';
+        
+        if (filterValue === 'all' || 
+            (filterValue === 'featured' && isFeatured) || 
+            (filterValue === 'regular' && !isFeatured)) {
           row.style.display = '';
         } else {
-          const statusBadge = row.querySelector('.status-badge');
-          if (statusBadge && 
-              ((filterValue === 'featured' && statusBadge.classList.contains('active')) || 
-               (filterValue === 'regular' && statusBadge.classList.contains('inactive')))) {
-            row.style.display = '';
-          } else {
-            row.style.display = 'none';
-          }
+          row.style.display = 'none';
         }
       });
     });
     
-    // Delete modal functionality
-    const modal = document.getElementById('delete-modal');
-    const deleteButtons = document.querySelectorAll('.delete-btn');
-    const confirmDelete = document.getElementById('confirm-delete');
-    const cancelDelete = document.getElementById('cancel-delete');
-    let productIdToDelete = null;
-    
-    deleteButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        productIdToDelete = this.dataset.id;
-        modal.style.display = 'flex';
-      });
-    });
-    
-    confirmDelete.addEventListener('click', function() {
-      if (productIdToDelete) {
-        window.location.href = `/admin/products/${productIdToDelete}/delete`;
+    // Delete confirmation
+    function confirmDelete(productId) {
+      if (confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+        window.location.href = `/admin/products/${productId}/delete`;
       }
-    });
-    
-    cancelDelete.addEventListener('click', function() {
-      modal.style.display = 'none';
-      productIdToDelete = null;
-    });
-    
-    window.addEventListener('click', function(event) {
-      if (event.target === modal) {
-        modal.style.display = 'none';
-        productIdToDelete = null;
-      }
-    });
+    }
   </script>
 </body>
 </html>
