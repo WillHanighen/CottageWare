@@ -559,15 +559,60 @@ async def admin_save_category(
     db: Session = Depends(get_db),
     current_user: User = Depends(admin_required())
 ):
-    """Save category data"""
+    # Process the form data
     form_data = {
-        'name': name,
-        'description': description,
-        'display_order': display_order,
-        'is_visible': is_visible,
-        'category_id': category_id
+        "name": name,
+        "description": description,
+        "order": display_order,
+        "is_public": is_visible == "on",
+        "category_id": category_id if category_id else None
     }
-    return await category_save(db, current_user, form_data)
+    
+    # Call the admin function to save the category
+    result = await category_save(db, current_user, form_data)
+    
+    return result
+
+@app.get("/admin/forums/categories/{category_id}/delete")
+async def admin_delete_category(
+    category_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_required())
+):
+    # Get the category
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        return RedirectResponse(url="/admin/forums?error=Category+not+found", status_code=303)
+    
+    # Delete all forums in the category
+    forums = db.query(Forum).filter(Forum.category_id == category_id).all()
+    for forum in forums:
+        # Delete all threads in the forum
+        threads = db.query(Thread).filter(Thread.forum_id == forum.id).all()
+        for thread in threads:
+            # Delete all posts in the thread
+            db.query(Post).filter(Post.thread_id == thread.id).delete()
+            # Delete the thread
+            db.delete(thread)
+        
+        # Delete the forum
+        db.delete(forum)
+    
+    # Delete the category
+    db.delete(category)
+    db.commit()
+    
+    return RedirectResponse(url="/admin/forums?success=Category+deleted+successfully", status_code=303)
+
+# Handle the misspelled URL path (categorys instead of categories)
+@app.get("/admin/forums/categorys/{category_id}/delete")
+async def admin_delete_category_misspelled(
+    category_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_required())
+):
+    # Redirect to the correctly spelled URL
+    return RedirectResponse(url=f"/admin/forums/categories/{category_id}/delete", status_code=307)
 
 @app.post("/admin/forums/save")
 async def admin_save_forum(

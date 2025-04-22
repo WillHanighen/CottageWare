@@ -86,6 +86,7 @@ async def admin_dashboard(request: Request, db: Session, current_user: User):
     user_count = db.query(User).count()
     thread_count = db.query(Thread).count()
     post_count = db.query(Post).count()
+    product_count = db.query(Product).count()
     
     # Get recent activity (simplified example)
     recent_activities = [
@@ -106,6 +107,7 @@ async def admin_dashboard(request: Request, db: Session, current_user: User):
         "user_count": user_count,
         "thread_count": thread_count,
         "post_count": post_count,
+        "product_count": product_count,
         "recent_activities": recent_activities
     }
 
