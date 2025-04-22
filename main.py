@@ -154,7 +154,7 @@ async def read_home(request: Request, db: Session = Depends(get_db), current_use
     # Process featured products with markdown and truncate descriptions
     for product in featured_products:
         if product.description:
-            product.full_description = render_markdown(product.description)
+            product.full_description_html = render_markdown(product.description)
             # Create a truncated version for display
             if len(product.description) > 250:
                 product.short_description = product.description[:250] + "..."
@@ -1216,7 +1216,7 @@ async def read_products(request: Request, db: Session = Depends(get_db), current
     for product in products:
         # First render markdown
         if product.description:
-            product.full_description = render_markdown(product.description)
+            product.full_description_html = render_markdown(product.description)
             # Create a truncated version for display
             if len(product.description) > 250:
                 product.short_description = product.description[:250] + "..."
@@ -1227,7 +1227,7 @@ async def read_products(request: Request, db: Session = Depends(get_db), current
     # Process featured products similarly
     for product in featured_products:
         if product.description:
-            product.full_description = render_markdown(product.description)
+            product.full_description_html = render_markdown(product.description)
             if len(product.description) > 250:
                 product.short_description = product.description[:250] + "..."
             else:

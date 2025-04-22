@@ -64,6 +64,7 @@
             <div class="product-content">
               <h3 class="product-title">{{ product.name }}</h3>
               <div class="product-description">{{ product.short_description_html|safe }}</div>
+              <div class="product-full-description" style="display: none;">{{ product.full_description_html|safe }}</div>
               {% if product.sale_price and product.sale_price != 'None' and product.sale_price != 'none' %}
                 <div class="product-price"><span class="original-price"><s>${{ product.price }}</s></span> ${{ product.sale_price }}</div>
               {% else %}
@@ -93,6 +94,7 @@
             <div class="product-content">
               <h3 class="product-title">Premium Gaming Package</h3>
               <p class="product-description">Get access to our exclusive gaming content and tools with our premium package.</p>
+              <div class="product-full-description" style="display: none;"></div>
               <div class="product-price">$49.99</div>
               <div class="sellapp-button-container">
                 <button
@@ -132,6 +134,7 @@
             <div class="product-content">
               <h3 class="product-title">{{ product.name }}</h3>
               <div class="product-description">{{ product.short_description_html|safe }}</div>
+              <div class="product-full-description" style="display: none;">{{ product.full_description_html|safe }}</div>
               {% if product.sale_price and product.sale_price != 'None' and product.sale_price != 'none' %}
                 <div class="product-price"><span class="original-price"><s>${{ product.price }}</s></span> ${{ product.sale_price }}</div>
               {% else %}

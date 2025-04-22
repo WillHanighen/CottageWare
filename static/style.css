@@ -2619,3 +2619,43 @@ footer p {
 .section-title span {
   color: #00a8ff;
 }
+
+/* Markdown styling */
+code {
+  background-color: #333;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+  color: #00a8ff;
+}
+
+pre {
+  background-color: #222;
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin-bottom: 15px;
+  border: 1px solid #333;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+  color: #f8f9fa;
+}
+
+del, s, strike {
+  text-decoration: line-through;
+  color: #999;
+}
+
+blockquote {
+  border-left: 3px solid #00a8ff;
+  padding-left: 15px;
+  margin-left: 0;
+  margin-right: 0;
+  font-style: italic;
+  color: #aaa;
+  margin-bottom: 15px;
+}

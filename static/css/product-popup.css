@@ -82,6 +82,8 @@
 .product-popup-image {
   flex: 1;
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (min-width: 768px) {
@@ -95,6 +97,7 @@
   height: auto;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  margin-bottom: 20px;
 }
 
 .product-popup-image-placeholder {
@@ -112,6 +115,13 @@
   color: #00a8ff;
 }
 
+.product-popup-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
 .product-popup-details {
   flex: 1;
   display: flex;
@@ -119,27 +129,156 @@
 }
 
 .product-popup-description {
-  margin-bottom: 20px;
   color: #ccc;
   line-height: 1.6;
   font-size: 16px;
+  overflow-y: auto;
+  padding-right: 10px;
+  max-height: 400px;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Markdown styling for product description */
+.product-popup-description h1 {
+  font-size: 28px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.product-popup-description h2 {
+  font-size: 24px;
+  margin-top: 18px;
+  margin-bottom: 9px;
+  color: #fff;
+}
+
+.product-popup-description h3 {
+  font-size: 20px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  color: #fff;
+}
+
+.product-popup-description h4 {
+  font-size: 18px;
+  margin-top: 14px;
+  margin-bottom: 7px;
+  color: #fff;
+}
+
+.product-popup-description h5 {
+  font-size: 16px;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.product-popup-description h6 {
+  font-size: 14px;
+  margin-top: 10px;
+  margin-bottom: 5px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.product-popup-description ul, 
+.product-popup-description ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+.product-popup-description li {
+  margin-bottom: 5px;
+}
+
+.product-popup-description p {
+  margin-bottom: 15px;
+}
+
+.product-popup-description code {
+  background-color: #333;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.product-popup-description pre {
+  background-color: #333;
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin-bottom: 15px;
+}
+
+.product-popup-description blockquote {
+  border-left: 3px solid #00a8ff;
+  padding-left: 15px;
+  margin-left: 0;
+  margin-right: 0;
+  font-style: italic;
+  color: #aaa;
+}
+
+/* Scrollbar styling for description */
+.product-popup-description::-webkit-scrollbar {
+  width: 8px;
+}
+
+.product-popup-description::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+.product-popup-description::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.product-popup-description::-webkit-scrollbar-thumb:hover {
+  background: #00a8ff;
 }
 
 .product-popup-price {
   font-size: 28px;
   font-weight: 700;
   color: #00a8ff;
-  margin-bottom: 20px;
+  margin-right: 15px;
+  display: flex;
+  align-items: center;
 }
 
 .product-popup-price .original-price {
   font-size: 20px;
   color: #999;
   margin-right: 10px;
+  text-decoration: line-through;
 }
 
 .product-popup-actions {
-  margin-top: auto;
+  margin-top: 0;
+  width: 100%;
+}
+
+.product-popup-actions button {
+  background-color: #00a8ff;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  font-size: 18px;
+}
+
+.product-popup-actions button:hover {
+  background-color: #0088cc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Prevent body scrolling when popup is open */

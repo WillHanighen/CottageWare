@@ -14,11 +14,15 @@ document.addEventListener('DOMContentLoaded', function() {
             <button class="product-popup-close">&times;</button>
         </div>
         <div class="product-popup-body">
-            <div class="product-popup-image"></div>
+            <div class="product-popup-image">
+                <div class="product-popup-image-content"></div>
+                <div class="product-popup-action-row">
+                    <div class="product-popup-price"></div>
+                    <div class="product-popup-actions"></div>
+                </div>
+            </div>
             <div class="product-popup-details">
                 <div class="product-popup-description"></div>
-                <div class="product-popup-price"></div>
-                <div class="product-popup-actions"></div>
             </div>
         </div>
     `;
@@ -61,7 +65,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function openProductPopup(productCard) {
         // Get product data
         const title = productCard.querySelector('.product-title').textContent;
-        const description = productCard.querySelector('.product-description').innerHTML;
+        const fullDescriptionElement = productCard.querySelector('.product-full-description');
+        const description = fullDescriptionElement && fullDescriptionElement.innerHTML ? 
+                           fullDescriptionElement.innerHTML : 
+                           productCard.querySelector('.product-description').innerHTML;
         const priceElement = productCard.querySelector('.product-price').cloneNode(true);
         
         // Get image
@@ -88,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Populate popup
         popupContent.querySelector('.product-popup-title').textContent = title;
-        popupContent.querySelector('.product-popup-image').innerHTML = imageContent;
+        popupContent.querySelector('.product-popup-image-content').innerHTML = imageContent;
         popupContent.querySelector('.product-popup-description').innerHTML = description;
         popupContent.querySelector('.product-popup-price').innerHTML = priceElement.innerHTML;
         popupContent.querySelector('.product-popup-actions').innerHTML = purchaseButton.outerHTML;
