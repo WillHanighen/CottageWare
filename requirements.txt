@@ -16,3 +16,4 @@ authlib
 httpx
 python-dotenv
 fastapi-sso
+markdown
