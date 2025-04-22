@@ -25,14 +25,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Import models and database
-from models import User, Role, Category, Forum, Thread, Post, Shoutbox, Product, UserProfile, ThreadView
+from models import User, Role, Category, Forum, Thread, Post, Shoutbox, UserProfile, ThreadView
 from database import SessionLocal, engine, Base
 
 # Import admin functionality
-from admin import (admin_dashboard, product_list, product_form, product_save, product_toggle, product_delete, 
-                user_list, user_form, user_toggle, user_delete, user_save, forum_management, category_form, forum_form, 
+from admin import (
+    admin_dashboard, user_list, user_form, user_toggle, user_delete, user_save, forum_management, category_form, forum_form, 
                 category_save, forum_save, site_settings, settings_save, admin_required, thread_list, thread_delete,
-                thread_toggle_sticky)
+                thread_toggle_sticky, product_list, product_form, product_save, product_delete, product_toggle_featured
+)
 
 # Import authentication functions
 from auth import (
@@ -64,7 +65,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/content", StaticFiles(directory="content"), name="content")
 
 # Create upload directories if they don't exist
-os.makedirs(os.path.join("static", "uploads", "products"), exist_ok=True)
+os.makedirs(os.path.join("static", "uploads", "profile-pics"), exist_ok=True)
 
 # Initializing Jinja2Templates for templating
 templates = Jinja2Templates(directory="templates")
@@ -141,15 +142,23 @@ async def read_home(request: Request, db: Session = Depends(get_db), current_use
     """
     Handles GET requests to the root URL (/).
     """
-    # Get featured products
-    featured_products = db.query(Product).filter(Product.is_featured == True).all()
+    # Get latest threads for the home page
+    latest_threads = db.query(Thread).order_by(Thread.created_at.desc()).limit(5).all()
+    
+    # Get Sell.app configuration for the featured product
+    sellapp_store_id = os.getenv("SELLAPP_STORE_ID", "60377")
+    sellapp_product_id = os.getenv("SELLAPP_FEATURED_PRODUCT_ID", "293918")
+    sellapp_darkmode = os.getenv("SELLAPP_DARKMODE", "true")
     
     return templates.TemplateResponse(
         "index.html", 
         {
             "request": request, 
             "current_user": current_user,
-            "products": featured_products
+            "latest_threads": latest_threads,
+            "sellapp_store_id": sellapp_store_id,
+            "sellapp_product_id": sellapp_product_id,
+            "sellapp_darkmode": sellapp_darkmode
         }
     )
 
@@ -421,52 +430,6 @@ async def admin_home(request: Request, db: Session = Depends(get_db), current_us
     template_data = await admin_dashboard(request, db, current_user)
     return templates.TemplateResponse("admin/dashboard.html", template_data)
 
-@app.get("/admin/products", response_class=HTMLResponse)
-async def admin_products(request: Request, page: int = 1, db: Session = Depends(get_db), current_user: User = Depends(admin_required())):
-    """Admin products list page"""
-    template_data = await product_list(request, db, current_user, page)
-    return templates.TemplateResponse("admin/products.html", template_data)
-
-@app.get("/admin/products/new", response_class=HTMLResponse)
-async def admin_new_product(request: Request, db: Session = Depends(get_db), current_user: User = Depends(admin_required())):
-    """Admin new product form"""
-    template_data = await product_form(request, db, current_user)
-    return templates.TemplateResponse("admin/product_form.html", template_data)
-
-@app.get("/admin/products/{product_id}/edit", response_class=HTMLResponse)
-async def admin_edit_product(request: Request, product_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required())):
-    """Admin edit product form"""
-    template_data = await product_form(request, db, current_user, product_id)
-    return templates.TemplateResponse("admin/product_form.html", template_data)
-
-@app.post("/admin/products/save")
-async def admin_save_product(
-    db: Session = Depends(get_db), 
-    current_user: User = Depends(admin_required()),
-    name: str = Form(...),
-    description: str = Form(...),
-    price: float = Form(...),
-    stock: int = Form(...),
-    is_active: bool = Form(False),
-    is_featured: bool = Form(False),
-    category_id: Optional[int] = Form(None),
-    image: Optional[UploadFile] = File(None),
-    product_id: Optional[int] = Form(None)
-):
-    """Save product (create or update)"""
-    return await product_save(db, current_user, name, description, price, stock, is_active, is_featured, category_id, image, product_id)
-
-@app.get("/admin/products/{product_id}/toggle")
-async def admin_toggle_product(product_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required())):
-    """Toggle product active status"""
-    return await product_toggle(db, current_user, product_id)
-
-@app.get("/admin/products/{product_id}/delete")
-async def admin_delete_product(product_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required())):
-    """Delete a product"""
-    return await product_delete(db, current_user, product_id)
-
-# User Management Routes
 @app.get("/admin/users", response_class=HTMLResponse)
 async def admin_users(request: Request, page: int = 1, db: Session = Depends(get_db), current_user: User = Depends(admin_required())):
     """Admin users list page"""
@@ -601,6 +564,66 @@ async def admin_save_forum(
         'forum_id': forum_id
     }
     return await forum_save(db, current_user, form_data)
+
+# Admin product routes
+@app.get("/admin/products", response_class=HTMLResponse)
+async def admin_products_page(
+    request: Request,
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_required())
+):
+    """Admin products management page"""
+    context = await product_list(request, db, current_user, page)
+    return templates.TemplateResponse("admin/products.html", context)
+
+@app.get("/admin/products/new", response_class=HTMLResponse)
+async def admin_product_new_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_required())
+):
+    """Admin new product form page"""
+    context = await product_form(request, db, current_user)
+    return templates.TemplateResponse("admin/product_form.html", context)
+
+@app.get("/admin/products/{product_id}/edit", response_class=HTMLResponse)
+async def admin_product_edit_page(
+    request: Request,
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_required())
+):
+    """Admin edit product form page"""
+    context = await product_form(request, db, current_user, product_id)
+    return templates.TemplateResponse("admin/product_form.html", context)
+
+@app.post("/admin/products/save")
+async def admin_save_product(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_required())
+):
+    """Save product data"""
+    return await product_save(request, db, current_user)
+
+@app.get("/admin/products/{product_id}/delete")
+async def admin_delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_required())
+):
+    """Delete a product"""
+    return await product_delete(db, current_user, product_id)
+
+@app.get("/admin/products/{product_id}/toggle-featured")
+async def admin_toggle_product_featured(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_required())
+):
+    """Toggle product featured status"""
+    return await product_toggle_featured(db, current_user, product_id)
 
 # Site Settings Routes
 @app.get("/admin/settings", response_class=HTMLResponse)
@@ -1134,18 +1157,44 @@ async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
 
 # Products page
 @app.get("/products", response_class=HTMLResponse)
-async def products_page(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+async def read_products(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
     """
-    Displays the products page.
+    Handles GET requests to the /products URL.
+    Displays products using Sell.app embedded storefront.
     """
-    products = db.query(Product).all()
+    # Get Sell.app configuration from environment variables
+    sellapp_store_id = os.getenv("SELLAPP_STORE_ID", "60377")
+    sellapp_products_raw = os.getenv("SELLAPP_PRODUCTS", "293918,Purchase,,true").strip().split("\n")
+    
+    # Parse product configurations
+    sellapp_products = []
+    for product_line in sellapp_products_raw:
+        if not product_line.strip():
+            continue
+            
+        parts = product_line.split(",")
+        product = {"id": parts[0].strip()}
+        
+        if len(parts) > 1 and parts[1].strip():
+            product["button_text"] = parts[1].strip()
+        
+        if len(parts) > 2 and parts[2].strip():
+            product["theme"] = parts[2].strip()
+            
+        if len(parts) > 3 and parts[3].strip():
+            product["darkmode"] = parts[3].strip()
+            
+        sellapp_products.append(product)
     
     return templates.TemplateResponse(
-        "products.html", 
+        "products.html",
         {
-            "request": request, 
+            "request": request,
             "current_user": current_user,
-            "products": products
+            "ecommerce_provider": "sellapp",
+            "sellapp_store_id": sellapp_store_id,
+            "sellapp_products": sellapp_products,
+            "ecommerce_configured": True
         }
     )
 
@@ -1569,7 +1618,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                     shoutbox_type = data.get("shoutbox_type", "public")
                     
                     print(f"[DEBUG] Received {shoutbox_type} shoutbox message: {content[:50]}{'...' if len(content) > 50 else ''}")
-                    print(f"[DEBUG] Message claims to be from user ID: {message_user_id}, username: {message_username}")
+                    print(f"[DEBUG] Message claims to be from user ID: {message_id}, user_id: {message_user_id}")
                     
                     # Process message if it has content and user information
                     if content and message_user_id and message_username:
@@ -1578,7 +1627,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                             message_user = db.query(User).filter(User.id == message_user_id).first()
                             
                             if not message_user:
-                                print(f"[DEBUG] User with ID {message_user_id} not found in database")
+                                print(f"[DEBUG] User not found for message ID: {message_id}, user_id: {message_user_id}")
                                 await websocket.send_json({
                                     "type": "error",
                                     "message": "Invalid user information. Please refresh the page and try again."
@@ -1756,7 +1805,7 @@ async def broadcast_shoutbox_message(message: Shoutbox, db: Session):
                 "id": message.id,
                 "user_id": user.id,
                 "username": user.username,
-                "avatar_url": user.avatar_url or "/static/images/default-avatar.png",
+                "avatar_url": user.avatar_url or '/static/images/default-avatar.png',
                 "message": message.message,
                 "created_at": message.created_at.isoformat(),
                 "account_tier": user.profile.account_tier if user.profile else 0,

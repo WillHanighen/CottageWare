@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  
+  <!-- Sell.app CSS -->
+  <link href="https://cdn.sell.app/embed/style.css" rel="stylesheet" />
+  <link href="/static/css/sellapp.css" rel="stylesheet" />
 </head>
 <body>
   {% include 'includes/navbar.html' %}
@@ -18,37 +22,71 @@
       <p>CottageWare offers the best gaming products on the market. Browse our selection below.</p>
     </section>
     
-    <section class="products-grid">
-      {% for product in products %}
-        <div class="product-card">
+    <!-- Featured Product -->
+    <section class="featured-products">
+      <h2 class="section-title">Featured <span>Products</span></h2>
+      
+      <!-- Sell.app Featured Product -->
+      <div class="sellapp-featured-product">
+        <div class="product-card featured-sellapp">
           <div class="product-image">
-            {% if product.image_url %}
-              <img src="{{ product.image_url }}" alt="{{ product.name }}">
-            {% else %}
-              <div class="product-image-placeholder">
-                <i class="fas fa-box-open"></i>
-              </div>
-            {% endif %}
-            {% if product.is_featured %}
-              <div class="product-badge">Featured</div>
-            {% endif %}
+            <div class="product-image-placeholder">
+              <i class="fas fa-crown"></i>
+            </div>
+            <div class="product-badge">Featured</div>
           </div>
           <div class="product-content">
-            <h3 class="product-title">{{ product.name }}</h3>
-            <p class="product-description">{{ product.description }}</p>
-            <div class="product-price">{{ product.price }}</div>
-            <a href="{{ product.external_url }}" class="btn product-btn" target="_blank">
-              <i class="fas fa-external-link-alt"></i> View Product
-            </a>
+            <h3 class="product-title">Premium Gaming Package</h3>
+            <p class="product-description">Get access to our exclusive gaming content and tools with our premium package.</p>
+            <div class="product-price">$49.99</div>
+            <div class="sellapp-button-container">
+              <button
+                data-sell-store="60377"
+                data-sell-product="293918"
+                data-sell-theme=""
+                data-sell-darkmode="true"
+              >
+                Purchase
+              </button>
+            </div>
           </div>
         </div>
-      {% else %}
-        <div class="no-products">
-          <p>No products available at the moment. Check back soon!</p>
-        </div>
-      {% endfor %}
+      </div>
     </section>
     
+    <section class="products-grid">
+      <h2 class="section-title text-center">All <span>Products</span></h2>
+      <!-- Sell.app Embedded Products -->
+      <div class="sellapp-products">
+        {% for product in sellapp_products %}
+          <div class="product-card">
+            <div class="product-image">
+              <div class="product-image-placeholder">
+                <i class="fas fa-gamepad"></i>
+              </div>
+            </div>
+            <div class="product-content">
+              <h3 class="product-title">{{ product.name|default('Gaming Product') }}</h3>
+              <p class="product-description">{{ product.description|default('High-quality gaming product from CottageWare.') }}</p>
+              <div class="product-price">{{ product.price|default('$29.99') }}</div>
+              <div class="sellapp-button-container">
+                <button
+                  data-sell-store="{{ sellapp_store_id }}"
+                  data-sell-product="{{ product.id }}"
+                  data-sell-theme="{{ product.theme|default('') }}"
+                  data-sell-darkmode="{{ product.darkmode|default('true') }}"
+                >
+                  {{ product.button_text|default('Purchase') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+    
+
+    <!-- Reseller Information -->
     <section class="reseller-info">
       <div class="reseller-card">
         <div class="reseller-icon">
@@ -83,8 +121,12 @@
         </div>
       </div>
     </section>
+
   </main>
 
   {% include 'includes/footer.html' %}
+  
+  <!-- Sell.app JavaScript -->
+  <script src="https://cdn.sell.app/embed/script.js" type="module"></script>
 </body>
 </html>

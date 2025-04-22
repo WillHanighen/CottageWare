@@ -218,15 +218,17 @@ class Shoutbox(Base):
     user = relationship("User")
 
 class Product(Base):
-    """Product model for reselling"""
+    """Product model for Sell.app integration and admin management"""
     __tablename__ = "products"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100))
     description = Column(Text)
-    price = Column(String(50))  # Stored as string to handle different pricing models
+    price = Column(String(50))
+    sale_price = Column(String(50), nullable=True)
     image_url = Column(String(255), nullable=True)
-    external_url = Column(String(255))  # Link to the actual product
+    store_id = Column(String(50), default="60377")  # Default Sell.app store ID
+    product_id = Column(String(50))  # Sell.app product ID
     is_featured = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

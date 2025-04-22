@@ -1,0 +1,224 @@
+/* Sell.app Button Styling */
+.sellapp-button-container {
+  margin-top: 15px;
+}
+
+/* Custom styling for Sell.app buttons */
+.sellapp-button-container button,
+.sellapp-product-card button {
+  background-color: #00a8ff !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 10px 20px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.sellapp-button-container button:hover,
+.sellapp-product-card button:hover {
+  background-color: #0097e6 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.sellapp-button-container button:active,
+.sellapp-product-card button:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Styling for the product cards */
+.sellapp-product-card {
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 15px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+  padding: 20px;
+}
+
+.sellapp-product-card:hover {
+  transform: translateY(-5px);
+}
+
+.sellapp-products {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+}
+
+/* Featured product styling */
+.featured-sellapp {
+  border: 2px solid #00a8ff;
+  box-shadow: 0 8px 16px rgba(0, 168, 255, 0.2);
+}
+
+/* Additional styling for products page */
+.featured-products {
+  margin-bottom: 40px;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 32px;
+  margin-bottom: 30px;
+  color: #f8f9fa;
+}
+
+.section-title span {
+  color: #00a8ff;
+}
+
+.sellapp-featured-product {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.product-card {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.product-image {
+  position: relative;
+  height: 200px;
+  background-color: #222;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.product-image-placeholder {
+  font-size: 64px;
+  color: #00a8ff;
+}
+
+.product-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #00a8ff;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.product-content {
+  padding: 20px;
+}
+
+.product-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #f8f9fa;
+}
+
+.product-description {
+  color: #ccc;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.product-price {
+  font-size: 24px;
+  font-weight: 700;
+  color: #00a8ff;
+  margin-bottom: 15px;
+}
+
+/* Products grid styling */
+.products-grid {
+  margin-bottom: 40px;
+}
+
+.sellapp-products {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.sellapp-product-card {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.sellapp-product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Make product cards in the grid smaller than the featured one */
+.sellapp-products .product-card {
+  max-width: none;
+}
+
+.sellapp-products .product-image {
+  height: 150px;
+}
+
+.sellapp-products .product-image-placeholder {
+  font-size: 48px;
+}
+
+.sellapp-products .product-title {
+  font-size: 20px;
+}
+
+.sellapp-products .product-description {
+  font-size: 14px;
+}
+
+.sellapp-products .product-price {
+  font-size: 20px;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .sellapp-products {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .sellapp-products {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  
+  .product-card {
+    max-width: 100%;
+  }
+}

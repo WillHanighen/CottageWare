@@ -27,6 +27,7 @@
             <button type="button" class="settings-tab active" data-tab="general">General</button>
             <button type="button" class="settings-tab" data-tab="appearance">Appearance</button>
             <button type="button" class="settings-tab" data-tab="forum">Forum Settings</button>
+            <button type="button" class="settings-tab" data-tab="ecommerce">E-commerce</button>
             <button type="button" class="settings-tab" data-tab="security">Security</button>
             <button type="button" class="settings-tab" data-tab="advanced">Advanced</button>
           </div>
@@ -237,6 +238,119 @@
                 <input type="checkbox" id="allow_image_upload" name="allow_image_upload" {% if not settings or settings.allow_image_upload %}checked{% endif %}>
                 <label for="allow_image_upload">Allow Image Uploads in Posts</label>
               </div>
+            </div>
+            
+            <!-- E-commerce Settings Tab -->
+            <div class="settings-panel" id="ecommerce-panel">
+              <form class="settings-form" action="/admin/settings/save" method="post" data-section="ecommerce">
+                <h3>E-commerce Settings</h3>
+                
+                <div class="form-group">
+                  <label for="ecommerce_provider">E-commerce Provider</label>
+                  <select id="ecommerce_provider" name="ecommerce_provider">
+                    <option value="shoppy" {% if settings and settings.ecommerce_provider == 'shoppy' %}selected{% endif %}>Shoppy.gg</option>
+                    <option value="gumroad" {% if settings and settings.ecommerce_provider == 'gumroad' %}selected{% endif %}>Gumroad</option>
+                    <option value="selly" {% if settings and settings.ecommerce_provider == 'selly' %}selected{% endif %}>Selly.io</option>
+                    <option value="sendowl" {% if settings and settings.ecommerce_provider == 'sendowl' %}selected{% endif %}>SendOwl</option>
+                    <option value="paddle" {% if settings and settings.ecommerce_provider == 'paddle' %}selected{% endif %}>Paddle</option>
+                    <option value="sellapp" {% if settings and settings.ecommerce_provider == 'sellapp' %}selected{% endif %}>Sell.app</option>
+                  </select>
+                </div>
+                
+                <!-- Shoppy.gg Settings -->
+                <div class="provider-settings" id="shoppy-settings" {% if not settings or settings.ecommerce_provider != 'shoppy' %}style="display:none"{% endif %}>
+                  <div class="form-group">
+                    <label for="shoppy_store_id">Shoppy.gg Store ID</label>
+                    <input type="text" id="shoppy_store_id" name="shoppy_store_id" value="{{ settings.shoppy_store_id if settings and settings.shoppy_store_id else '' }}">
+                    <div class="form-help">Your Shoppy.gg store ID (found in your Shoppy dashboard)</div>
+                  </div>
+                </div>
+                
+                <!-- Gumroad Settings -->
+                <div class="provider-settings" id="gumroad-settings" {% if not settings or settings.ecommerce_provider != 'gumroad' %}style="display:none"{% endif %}>
+                  <div class="form-group">
+                    <label for="gumroad_product_ids">Gumroad Product IDs</label>
+                    <textarea id="gumroad_product_ids" name="gumroad_product_ids" rows="3" placeholder="One product ID per line">{{ settings.gumroad_product_ids if settings and settings.gumroad_product_ids else '' }}</textarea>
+                    <div class="form-help">Enter one Gumroad product ID per line (the part after /l/ in your product URL)</div>
+                  </div>
+                </div>
+                
+                <!-- Selly Settings -->
+                <div class="provider-settings" id="selly-settings" {% if not settings or settings.ecommerce_provider != 'selly' %}style="display:none"{% endif %}>
+                  <div class="form-group">
+                    <label for="selly_store_id">Selly.io Store ID</label>
+                    <input type="text" id="selly_store_id" name="selly_store_id" value="{{ settings.selly_store_id if settings and settings.selly_store_id else '' }}">
+                    <div class="form-help">Your Selly.io store ID (found in your Selly dashboard)</div>
+                  </div>
+                </div>
+                
+                <!-- SendOwl Settings -->
+                <div class="provider-settings" id="sendowl-settings" {% if not settings or settings.ecommerce_provider != 'sendowl' %}style="display:none"{% endif %}>
+                  <div class="form-group">
+                    <label for="sendowl_product_ids">SendOwl Product IDs</label>
+                    <textarea id="sendowl_product_ids" name="sendowl_product_ids" rows="3" placeholder="One product ID per line">{{ settings.sendowl_product_ids if settings and settings.sendowl_product_ids else '' }}</textarea>
+                    <div class="form-help">Enter one SendOwl product ID per line</div>
+                  </div>
+                </div>
+                
+                <!-- Paddle Settings -->
+                <div class="provider-settings" id="paddle-settings" {% if not settings or settings.ecommerce_provider != 'paddle' %}style="display:none"{% endif %}>
+                  <div class="form-group">
+                    <label for="paddle_vendor_id">Paddle Vendor ID</label>
+                    <input type="text" id="paddle_vendor_id" name="paddle_vendor_id" value="{{ settings.paddle_vendor_id if settings and settings.paddle_vendor_id else '' }}">
+                    <div class="form-help">Your Paddle vendor ID (found in your Paddle dashboard)</div>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="paddle_product_ids">Paddle Product IDs</label>
+                    <textarea id="paddle_product_ids" name="paddle_product_ids" rows="3" placeholder="One product ID per line">{{ settings.paddle_product_ids if settings and settings.paddle_product_ids else '' }}</textarea>
+                    <div class="form-help">Enter one Paddle product ID per line</div>
+                  </div>
+                </div>
+                
+                <!-- Sell.app Settings -->
+                <div class="provider-settings" id="sellapp-settings" {% if not settings or settings.ecommerce_provider != 'sellapp' %}style="display:none"{% endif %}>
+                  <div class="form-group">
+                    <label for="sellapp_store_id">Sell.app Store ID</label>
+                    <input type="text" id="sellapp_store_id" name="sellapp_store_id" value="{{ settings.sellapp_store_id if settings and settings.sellapp_store_id else '' }}">
+                    <div class="form-help">Your Sell.app store ID (found in your Sell.app dashboard)</div>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="sellapp_products">Sell.app Products</label>
+                    <textarea id="sellapp_products" name="sellapp_products" rows="5" placeholder="One product per line in format: product_id,button_text,theme,darkmode">{{ settings.sellapp_products if settings and settings.sellapp_products else '' }}</textarea>
+                    <div class="form-help">
+                      Enter one product per line with format: product_id,button_text,theme,darkmode<br>
+                      Example: 293918,Buy Now!,,false<br>
+                      Only product_id is required, other values are optional
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="form-group checkbox-group">
+                  <input type="checkbox" id="show_products_navbar" name="show_products_navbar" {% if settings and settings.show_products_navbar %}checked{% endif %}>
+                  <label for="show_products_navbar">Show Products in Navbar</label>
+                </div>
+                
+                <div class="form-group">
+                  <h4>Integration Help</h4>
+                  <div class="integration-help">
+                    <p>To set up e-commerce integration:</p>
+                    <ol>
+                      <li>Select your preferred e-commerce provider</li>
+                      <li>Create an account with that provider if you don't have one</li>
+                      <li>Set up your products in their dashboard</li>
+                      <li>Enter the required IDs in the fields above</li>
+                      <li>Save your settings</li>
+                    </ol>
+                    <p>Your products will now appear on your products page using the embedded shop.</p>
+                  </div>
+                </div>
+                
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary">Save E-commerce Settings</button>
+                </div>
+              </form>
             </div>
             
             <!-- Security Settings Tab -->
@@ -465,6 +579,26 @@
             .catch(error => {
               alert('Error regenerating sitemap: ' + error);
             });
+        }
+      });
+    }
+    
+    // E-commerce provider toggle
+    const ecommerceProvider = document.getElementById('ecommerce_provider');
+    const providerSettings = document.querySelectorAll('.provider-settings');
+    
+    if (ecommerceProvider) {
+      ecommerceProvider.addEventListener('change', function() {
+        // Hide all provider settings
+        providerSettings.forEach(settings => {
+          settings.style.display = 'none';
+        });
+        
+        // Show selected provider settings
+        const selectedProvider = this.value;
+        const selectedSettings = document.getElementById(selectedProvider + '-settings');
+        if (selectedSettings) {
+          selectedSettings.style.display = 'block';
         }
       });
     }

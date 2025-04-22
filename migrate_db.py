@@ -82,6 +82,36 @@ def update_schema():
                 else:
                     print(f"Error adding author_id column to threads: {e}")
         
+        # Check products table
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products';")
+        if cursor.fetchone():
+            # Check if products table has the required columns
+            cursor.execute("PRAGMA table_info(products);")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            # Add missing columns
+            if "sale_price" not in columns:
+                cursor.execute("ALTER TABLE products ADD COLUMN sale_price VARCHAR(50);")
+                print("Added sale_price column to products table")
+            
+            if "store_id" not in columns:
+                cursor.execute("ALTER TABLE products ADD COLUMN store_id VARCHAR(50) DEFAULT '60377';")
+                print("Added store_id column to products table")
+            
+            if "product_id" not in columns:
+                cursor.execute("ALTER TABLE products ADD COLUMN product_id VARCHAR(50);")
+                print("Added product_id column to products table")
+            
+            if "created_at" not in columns:
+                cursor.execute("ALTER TABLE products ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
+                print("Added created_at column to products table")
+            
+            if "updated_at" not in columns:
+                cursor.execute("ALTER TABLE products ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
+                print("Added updated_at column to products table")
+        else:
+            print("Products table doesn't exist, will be created by SQLAlchemy")
+        
         conn.commit()
     except Exception as e:
         conn.rollback()

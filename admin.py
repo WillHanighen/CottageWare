@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime
 
 from database import SessionLocal
-from models import User, UserProfile, Product, Category, Forum, Thread, Post, Role
+from models import User, UserProfile, Category, Forum, Thread, Post, Role, Product
 from auth import get_current_active_user, SECRET_KEY, ALGORITHM, admin_required
 from jose import JWTError, jwt
 from utils import render_markdown
@@ -84,7 +84,6 @@ async def admin_dashboard(request: Request, db: Session, current_user: User):
     """Admin dashboard with site statistics"""
     # Get statistics
     user_count = db.query(User).count()
-    product_count = db.query(Product).count() 
     thread_count = db.query(Thread).count()
     post_count = db.query(Post).count()
     
@@ -98,18 +97,6 @@ async def admin_dashboard(request: Request, db: Session, current_user: User):
         for user in db.query(User).order_by(User.created_at.desc()).limit(5).all()
     ]
     
-    # Add some product activities
-    product_activities = [
-        {
-            "icon": "fas fa-shopping-cart",
-            "text": f"Product updated: {product.name}",
-            "time": datetime.now().strftime('%Y-%m-%d %H:%M')
-        }
-        for product in db.query(Product).order_by(Product.id.desc()).limit(3).all()
-    ]
-    
-    recent_activities.extend(product_activities)
-    
     # Sort by most recent
     recent_activities.sort(key=lambda x: x["time"], reverse=True)
     
@@ -117,19 +104,20 @@ async def admin_dashboard(request: Request, db: Session, current_user: User):
         "request": request,
         "current_user": current_user,
         "user_count": user_count,
-        "product_count": product_count,
         "thread_count": thread_count,
         "post_count": post_count,
         "recent_activities": recent_activities
     }
 
-# Product management
+# Product management functions
 async def product_list(request: Request, db: Session, current_user: User, page: int = 1, per_page: int = 10):
-    """List all products with pagination"""
+    """List all products with pagination for admin management"""
+    # Count total products
     total = db.query(Product).count()
-    total_pages = (total + per_page - 1) // per_page
+    total_pages = math.ceil(total / per_page)
     
-    products = db.query(Product).order_by(Product.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    # Get products with pagination
+    products = db.query(Product).order_by(Product.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
     
     return {
         "request": request,
@@ -145,87 +133,82 @@ async def product_form(request: Request, db: Session, current_user: User, produc
     if product_id:
         product = db.query(Product).filter(Product.id == product_id).first()
         if not product:
-            return RedirectResponse("/admin/products", status_code=302)
-    
-    # Get categories for the dropdown
-    categories = db.query(Category).order_by(Category.name).all()
+            return RedirectResponse(url="/admin/products?error=Product+not+found", status_code=303)
     
     return {
         "request": request,
         "current_user": current_user,
-        "product": product,
-        "categories": categories
+        "product": product
     }
 
-async def product_save(
-    db: Session, 
-    current_user: User,
-    name: str = Form(...),
-    description: str = Form(...),
-    price: float = Form(...),
-    stock: int = Form(...),
-    is_active: bool = Form(False),
-    is_featured: bool = Form(False),
-    category_id: Optional[int] = Form(None),
-    image: Optional[UploadFile] = File(None),
-    product_id: Optional[int] = Form(None)
-):
-    """Save product (create or update)"""
-    if product_id:
-        # Update existing product
-        product = db.query(Product).filter(Product.id == product_id).first()
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
-    else:
-        # Create new product
-        product = Product()
+async def product_save(request: Request, db: Session, current_user: User):
+    """Save product data"""
+    form = await request.form()
     
-    # Update product fields
-    product.name = name
-    product.description = description
-    product.price = price
-    product.stock = stock
-    product.is_active = is_active
-    product.is_featured = is_featured
-    product.category_id = category_id if category_id else None
+    # Get form data
+    product_id = form.get("id")
+    name = form.get("name")
+    description = form.get("description")
+    price = form.get("price")
+    sale_price = form.get("sale_price") or None
+    store_id = form.get("store_id")
+    product_sell_id = form.get("product_id")
+    is_featured = form.get("is_featured") == "on"
     
     # Handle image upload
-    if image and image.filename:
-        # Create upload directory if it doesn't exist
-        upload_dir = os.path.join("static", "uploads", "products")
-        os.makedirs(upload_dir, exist_ok=True)
-        
+    image_file = form.get("image")
+    image_url = None
+    
+    if image_file and isinstance(image_file, UploadFile) and image_file.filename:
         # Generate unique filename
-        file_ext = os.path.splitext(image.filename)[1]
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
-        file_path = os.path.join(upload_dir, unique_filename)
+        ext = os.path.splitext(image_file.filename)[1]
+        filename = f"{uuid.uuid4()}{ext}"
+        
+        # Ensure directory exists
+        os.makedirs("static/uploads/products", exist_ok=True)
         
         # Save file
+        file_path = f"static/uploads/products/{filename}"
         with open(file_path, "wb") as f:
-            content = await image.read()
-            f.write(content)
+            f.write(await image_file.read())
         
-        # Update product image URL
-        product.image_url = f"/{file_path.replace(os.sep, '/')}"
+        # Set image URL
+        image_url = f"/static/uploads/products/{filename}"
     
-    # Save to database
-    if not product_id:
+    if product_id and product_id.isdigit():
+        # Update existing product
+        product = db.query(Product).filter(Product.id == int(product_id)).first()
+        if not product:
+            return RedirectResponse(url="/admin/products?error=Product+not+found", status_code=303)
+        
+        product.name = name
+        product.description = description
+        product.price = price
+        product.sale_price = sale_price
+        product.store_id = store_id
+        product.product_id = product_sell_id
+        product.is_featured = is_featured
+        
+        # Only update image if a new one was uploaded
+        if image_url:
+            product.image_url = image_url
+    else:
+        # Create new product
+        product = Product(
+            name=name,
+            description=description,
+            price=price,
+            sale_price=sale_price,
+            store_id=store_id,
+            product_id=product_sell_id,
+            is_featured=is_featured,
+            image_url=image_url
+        )
         db.add(product)
     
     db.commit()
     
-    return RedirectResponse("/admin/products", status_code=302)
-
-async def product_toggle(db: Session, current_user: User, product_id: int):
-    """Toggle product active status"""
-    product = db.query(Product).filter(Product.id == product_id).first()
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    
-    product.is_active = not product.is_active
-    db.commit()
-    
-    return RedirectResponse("/admin/products", status_code=302)
+    return RedirectResponse(url="/admin/products?success=Product+saved+successfully", status_code=303)
 
 async def product_delete(db: Session, current_user: User, product_id: int):
     """Delete a product"""
@@ -236,7 +219,19 @@ async def product_delete(db: Session, current_user: User, product_id: int):
     db.delete(product)
     db.commit()
     
-    return RedirectResponse("/admin/products", status_code=302)
+    return RedirectResponse(url="/admin/products?success=Product+deleted+successfully", status_code=303)
+
+async def product_toggle_featured(db: Session, current_user: User, product_id: int):
+    """Toggle product featured status"""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Toggle featured status
+    product.is_featured = not product.is_featured
+    db.commit()
+    
+    return RedirectResponse(url="/admin/products?success=Product+status+updated", status_code=303)
 
 # User management
 async def user_list(request: Request, db: Session, current_user: User, page: int = 1, per_page: int = 10):
@@ -523,54 +518,58 @@ async def forum_save(db: Session, current_user: User, form_data: dict):
 # Site settings
 async def site_settings(request: Request, db: Session, current_user: User):
     """Admin site settings page"""
-    # Placeholder settings data
+    # In a real implementation, we would load settings from a database
+    # For now, we'll just simulate with some default values
     settings = {
         "general": {
             "site_name": "CottageWare",
-            "site_description": "A cozy place for software enthusiasts",
-            "site_keywords": "software, cottage, community, forum",
+            "site_description": "CottageWare Forums and Community",
             "contact_email": "admin@cottageware.com",
             "items_per_page": 20,
-            "enable_registration": True,
-            "enable_captcha": True
+            "timezone": "UTC",
+            "enable_registration": True
         },
         "appearance": {
             "theme": "dark",
-            "logo": "/content/site-immagery/logo-transparent.svg",
-            "favicon": "/content/site-immagery/logo-transparent.svg",
-            "custom_css": "",
-            "show_online_users": True,
-            "show_statistics": True
+            "primary_color": "#00a8ff",
+            "secondary_color": "#0097e6",
+            "show_breadcrumbs": True
         },
         "forum": {
+            "posts_per_page": 10,
+            "threads_per_page": 20,
+            "allow_guest_view": True,
+            "allow_file_uploads": True,
+            "max_upload_size": 2,  # MB
+            "allowed_file_types": "jpg,jpeg,png,gif,pdf,zip",
             "enable_signatures": True,
             "signature_max_length": 200,
             "enable_avatars": True,
-            "avatar_max_size": 500,  # KB
-            "posts_per_page": 10,
-            "threads_per_page": 20,
-            "hot_thread_threshold": 20,  # replies
-            "enable_attachments": True,
-            "attachment_max_size": 2048,  # KB
-            "allowed_file_types": "jpg,png,gif,pdf,zip"
+            "avatar_max_size": 1  # MB
         },
         "security": {
-            "min_password_length": 8,
-            "require_email_verification": True,
             "login_attempts": 5,
-            "lockout_time": 30,  # minutes
+            "lockout_time": 15,  # minutes
             "session_timeout": 60,  # minutes
             "enable_2fa": False,
-            "log_ip_addresses": True
-        },
-        "advanced": {
-            "enable_cache": True,
-            "cache_time": 60,  # minutes
-            "enable_sitemap": True,
-            "sitemap_update_frequency": 24,  # hours
+            "password_min_length": 8,
+            "require_special_chars": True,
+            "enable_captcha": True,
             "enable_api": False,
             "maintenance_mode": False,
             "maintenance_message": "Site is under maintenance. Please check back later."
+        },
+        "ecommerce": {
+            "ecommerce_provider": os.getenv("ECOMMERCE_PROVIDER", "sellapp"),
+            "shoppy_store_id": os.getenv("SHOPPY_STORE_ID", ""),
+            "gumroad_product_ids": os.getenv("GUMROAD_PRODUCT_IDS", ""),
+            "selly_store_id": os.getenv("SELLY_STORE_ID", ""),
+            "sendowl_product_ids": os.getenv("SENDOWL_PRODUCT_IDS", ""),
+            "paddle_vendor_id": os.getenv("PADDLE_VENDOR_ID", ""),
+            "paddle_product_ids": os.getenv("PADDLE_PRODUCT_IDS", ""),
+            "sellapp_store_id": os.getenv("SELLAPP_STORE_ID", "60377"),
+            "sellapp_products": os.getenv("SELLAPP_PRODUCTS", "293918,Buy now!,,false"),
+            "show_products_navbar": os.getenv("SHOW_PRODUCTS_NAVBAR", "true").lower() == "true"
         }
     }
     
@@ -587,6 +586,67 @@ async def settings_save(db: Session, current_user: User, form_data: dict):
     
     # In a real implementation, we would save these to a database table
     # For now, we'll just simulate success
+    
+    # Handle e-commerce settings
+    if section == 'ecommerce':
+        # Create a .env file or update it with the e-commerce settings
+        env_path = ".env"
+        
+        # Read existing env file if it exists
+        env_vars = {}
+        if os.path.exists(env_path):
+            with open(env_path, "r") as f:
+                for line in f:
+                    if "=" in line and not line.startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        env_vars[key] = value
+        
+        # Update with new values
+        provider = form_data.get("ecommerce_provider", "sellapp")
+        env_vars["ECOMMERCE_PROVIDER"] = provider
+        
+        # Update provider-specific settings
+        if provider == "shoppy":
+            env_vars["SHOPPY_STORE_ID"] = form_data.get("shoppy_store_id", "")
+        elif provider == "gumroad":
+            env_vars["GUMROAD_PRODUCT_IDS"] = form_data.get("gumroad_product_ids", "")
+        elif provider == "selly":
+            env_vars["SELLY_STORE_ID"] = form_data.get("selly_store_id", "")
+        elif provider == "sendowl":
+            env_vars["SENDOWL_PRODUCT_IDS"] = form_data.get("sendowl_product_ids", "")
+        elif provider == "paddle":
+            env_vars["PADDLE_VENDOR_ID"] = form_data.get("paddle_vendor_id", "")
+            env_vars["PADDLE_PRODUCT_IDS"] = form_data.get("paddle_product_ids", "")
+        elif provider == "sellapp":
+            env_vars["SELLAPP_STORE_ID"] = form_data.get("sellapp_store_id", "")
+            env_vars["SELLAPP_PRODUCTS"] = form_data.get("sellapp_products", "")
+        
+        # Update navbar setting
+        env_vars["SHOW_PRODUCTS_NAVBAR"] = "true" if form_data.get("show_products_navbar") else "false"
+        
+        # Write back to .env file
+        with open(env_path, "w") as f:
+            for key, value in env_vars.items():
+                f.write(f"{key}={value}\n")
+        
+        # Update environment variables in current process
+        os.environ["ECOMMERCE_PROVIDER"] = provider
+        if provider == "shoppy":
+            os.environ["SHOPPY_STORE_ID"] = form_data.get("shoppy_store_id", "")
+        elif provider == "gumroad":
+            os.environ["GUMROAD_PRODUCT_IDS"] = form_data.get("gumroad_product_ids", "")
+        elif provider == "selly":
+            os.environ["SELLY_STORE_ID"] = form_data.get("selly_store_id", "")
+        elif provider == "sendowl":
+            os.environ["SENDOWL_PRODUCT_IDS"] = form_data.get("sendowl_product_ids", "")
+        elif provider == "paddle":
+            os.environ["PADDLE_VENDOR_ID"] = form_data.get("paddle_vendor_id", "")
+            os.environ["PADDLE_PRODUCT_IDS"] = form_data.get("paddle_product_ids", "")
+        elif provider == "sellapp":
+            os.environ["SELLAPP_STORE_ID"] = form_data.get("sellapp_store_id", "")
+            os.environ["SELLAPP_PRODUCTS"] = form_data.get("sellapp_products", "")
+        
+        os.environ["SHOW_PRODUCTS_NAVBAR"] = "true" if form_data.get("show_products_navbar") else "false"
     
     # Perform actions based on settings
     if section == 'advanced':
