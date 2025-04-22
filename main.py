@@ -173,6 +173,25 @@ async def read_home(request: Request, db: Session = Depends(get_db), current_use
         }
     )
 
+# Health check endpoint
+@app.get("/health")
+async def health_check(db: Session = Depends(get_db)):
+    """
+    Health check endpoint for monitoring service availability.
+    Verifies database connectivity and returns 200 OK if the service is healthy.
+    """
+    try:
+        # Execute a simple database query to verify connectivity
+        from sqlalchemy import text
+        db.execute(text("SELECT 1")).first()
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        # If there's any database connection issue, return a 503 status code
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Service unhealthy: Database connection failed - {str(e)}"
+        )
+
 # Defining a route for the forum page
 @app.get("/forum", response_class=HTMLResponse)
 async def read_forum(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
