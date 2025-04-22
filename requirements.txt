@@ -17,3 +17,4 @@ httpx
 python-dotenv
 fastapi-sso
 markdown
+bleach
