@@ -1,0 +1,148 @@
+/* Policy Pages Styling */
+
+.policy-container {
+    max-width: 900px;
+    margin: 40px auto;
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.policy-container h1 {
+    color: #4a9df8;
+    margin-bottom: 10px;
+    font-size: 2.2rem;
+    border-bottom: 1px solid #333;
+    padding-bottom: 15px;
+}
+
+.last-updated {
+    color: #999;
+    font-style: italic;
+    margin-bottom: 30px;
+}
+
+.policy-section {
+    margin-bottom: 30px;
+}
+
+.policy-section h2 {
+    color: #4a9df8;
+    margin: 20px 0 15px;
+    font-size: 1.6rem;
+}
+
+.policy-section h3 {
+    color: #e9ecef;
+    margin: 15px 0 10px;
+    font-size: 1.3rem;
+}
+
+.policy-section p {
+    margin-bottom: 15px;
+    line-height: 1.7;
+}
+
+.policy-section ul, .policy-section ol {
+    margin: 15px 0 15px 20px;
+}
+
+.policy-section li {
+    margin-bottom: 8px;
+}
+
+.policy-section strong {
+    color: #e9ecef;
+}
+
+/* Contact Form Styling */
+.contact-form-container {
+    background-color: #222;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid #333;
+}
+
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: #e9ecef;
+}
+
+.form-group input,
+.form-group textarea {
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background-color: #333;
+    color: #f8f9fa;
+    font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #4a9df8;
+    box-shadow: 0 0 0 2px rgba(74, 157, 248, 0.2);
+}
+
+.btn-primary {
+    background-color: #4a9df8;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    align-self: flex-start;
+}
+
+.btn-primary:hover {
+    background-color: #3a8de8;
+}
+
+.policy-section a {
+    color: #4a9df8;
+    text-decoration: none;
+}
+
+.policy-section a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .policy-container {
+        padding: 20px;
+        margin: 20px auto;
+    }
+    
+    .policy-container h1 {
+        font-size: 1.8rem;
+    }
+    
+    .policy-section h2 {
+        font-size: 1.4rem;
+    }
+    
+    .policy-section h3 {
+        font-size: 1.2rem;
+    }
+    
+    .btn-primary {
+        width: 100%;
+    }
+}

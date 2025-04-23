@@ -45,8 +45,15 @@ from auth import (
 # Import utility functions
 from utils import validate_discord_username, filter_offensive_content, render_markdown
 
+# Import requests for reCAPTCHA verification
+import requests
+
 # Load environment variables
 load_dotenv()
+
+# Cloudflare Turnstile configuration
+TURNSTILE_SITE_KEY = os.getenv('TURNSTILE_SITE_KEY', '1x00000000000000000000AA')  # Test key
+TURNSTILE_SECRET_KEY = os.getenv('TURNSTILE_SECRET_KEY', '1x0000000000000000000000000000000AA')  # Test key
 
 # Creating a new FastAPI instance
 app = FastAPI(debug=True, title="CottageWare")
@@ -72,6 +79,28 @@ templates = Jinja2Templates(directory="templates")
 
 # Creating all tables in the database
 Base.metadata.create_all(bind=engine)
+
+# Cloudflare Turnstile verification function
+def verify_turnstile(turnstile_response):
+    """
+    Verifies a Turnstile response with Cloudflare's Turnstile API.
+    Returns True if verification succeeds, False otherwise.
+    """
+    if not turnstile_response:
+        return False
+        
+    data = {
+        'secret': TURNSTILE_SECRET_KEY,
+        'response': turnstile_response
+    }
+    
+    try:
+        response = requests.post('https://challenges.cloudflare.com/turnstile/v0/siteverify', data=data)
+        result = response.json()
+        return result.get('success', False)
+    except Exception as e:
+        print(f"Turnstile verification error: {e}")
+        return False
 
 # Custom exception handlers
 @app.exception_handler(404)
@@ -171,6 +200,41 @@ async def read_home(request: Request, db: Session = Depends(get_db), current_use
             "sellapp_store_id": sellapp_store_id,
             "featured_products": featured_products
         }
+    )
+
+# Routes for legal pages
+
+@app.get("/privacy-policy", response_class=HTMLResponse)
+async def privacy_policy(request: Request, current_user: User = Depends(get_optional_user)):
+    """
+    Handles GET requests to the /privacy-policy URL.
+    Displays the privacy policy page.
+    """
+    return templates.TemplateResponse(
+        "privacy_policy.html",
+        {"request": request, "current_user": current_user}
+    )
+
+@app.get("/terms-of-service", response_class=HTMLResponse)
+async def terms_of_service(request: Request, current_user: User = Depends(get_optional_user)):
+    """
+    Handles GET requests to the /terms-of-service URL.
+    Displays the terms of service page.
+    """
+    return templates.TemplateResponse(
+        "terms_of_service.html",
+        {"request": request, "current_user": current_user}
+    )
+
+@app.get("/contact-us", response_class=HTMLResponse)
+async def contact_us(request: Request, current_user: User = Depends(get_optional_user)):
+    """
+    Handles GET requests to the /contact-us URL.
+    Displays the contact us page with support, legal, and privacy contact information.
+    """
+    return templates.TemplateResponse(
+        "contact_us.html",
+        {"request": request, "current_user": current_user, "turnstile_site_key": TURNSTILE_SITE_KEY}
     )
 
 # Health check endpoint
@@ -1050,20 +1114,28 @@ async def login_page(request: Request, current_user: User = Depends(get_optional
     
     return templates.TemplateResponse(
         "login.html", 
-        {"request": request, "current_user": None}
+        {"request": request, "current_user": None, "turnstile_site_key": TURNSTILE_SITE_KEY}
     )
 
 # Login form submission
 @app.post("/login")
-async def login(request: Request, response: JSONResponse, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+async def login(request: Request, response: JSONResponse, username: str = Form(...), password: str = Form(...), g_recaptcha_response: str = Form(None), db: Session = Depends(get_db)):
     """
     Handles login form submission.
     """
+    # Verify Turnstile
+    if not verify_turnstile(g_recaptcha_response):
+        return templates.TemplateResponse(
+            "login.html", 
+            {"request": request, "error": "Please complete the CAPTCHA verification", "current_user": None, "turnstile_site_key": TURNSTILE_SITE_KEY},
+            status_code=400
+        )
+    
     user = authenticate_user(db, username, password)
     if not user:
         return templates.TemplateResponse(
             "login.html", 
-            {"request": request, "error": "Invalid username or password", "current_user": None},
+            {"request": request, "error": "Invalid username or password", "current_user": None, "turnstile_site_key": TURNSTILE_SITE_KEY},
             status_code=400
         )
     
@@ -1105,20 +1177,28 @@ async def register_page(request: Request, current_user: User = Depends(get_optio
     
     return templates.TemplateResponse(
         "register.html", 
-        {"request": request, "current_user": None}
+        {"request": request, "current_user": None, "turnstile_site_key": TURNSTILE_SITE_KEY}
     )
 
 # Register form submission
 @app.post("/register")
-async def register(request: Request, username: str = Form(...), email: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), db: Session = Depends(get_db)):
+async def register(request: Request, username: str = Form(...), email: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), g_recaptcha_response: str = Form(None), db: Session = Depends(get_db)):
     """
     Handles registration form submission.
     """
+    # Verify Turnstile
+    if not verify_turnstile(g_recaptcha_response):
+        return templates.TemplateResponse(
+            "register.html", 
+            {"request": request, "error": "Please complete the CAPTCHA verification", "current_user": None, "turnstile_site_key": TURNSTILE_SITE_KEY},
+            status_code=400
+        )
+    
     # Validate passwords match
     if password != confirm_password:
         return templates.TemplateResponse(
             "register.html", 
-            {"request": request, "error": "Passwords do not match", "current_user": None},
+            {"request": request, "error": "Passwords do not match", "current_user": None, "turnstile_site_key": TURNSTILE_SITE_KEY},
             status_code=400
         )
     
@@ -1130,7 +1210,7 @@ async def register(request: Request, username: str = Form(...), email: str = For
     if existing_user:
         return templates.TemplateResponse(
             "register.html", 
-            {"request": request, "error": "Username or email already exists", "current_user": None},
+            {"request": request, "error": "Username or email already exists", "current_user": None, "turnstile_site_key": TURNSTILE_SITE_KEY},
             status_code=400
         )
     

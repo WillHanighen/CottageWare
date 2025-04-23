@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
   {% include 'includes/navbar.html' %}
@@ -32,6 +33,10 @@
           <div class="form-group">
             <label for="password">Password</label>
             <input type="password" id="password" name="password" required>
+          </div>
+          
+          <div class="form-group captcha-container">
+            <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-theme="dark"></div>
           </div>
           
           <div class="form-actions">

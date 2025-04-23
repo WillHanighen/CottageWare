@@ -12,6 +12,16 @@ body {
   line-height: 1.6;
 }
 
+/* reCAPTCHA Styling */
+.captcha-container {
+  margin: 15px 0;
+}
+
+/* Dark theme for reCAPTCHA */
+.grecaptcha-badge {
+  filter: invert(85%);
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
