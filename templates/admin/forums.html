@@ -4,6 +4,7 @@
   <title>CottageWare - Admin Forums</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/css/admin.css">
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
@@ -11,7 +12,6 @@
 </head>
 <body>
   {% include 'includes/navbar.html' %}
-
   <!-- Main Content -->
   <main class="container">
     <section class="admin-panel">
@@ -28,14 +28,12 @@
           </div>
         </div>
       </div>
-
       <div class="admin-forums-section">
         <div class="section-tabs">
           <button class="tab-btn active" data-tab="categories">Categories</button>
           <button class="tab-btn" data-tab="forums">Forums</button>
           <button class="tab-btn" data-tab="threads">Threads</button>
         </div>
-
         <!-- Categories Tab -->
         <div class="tab-content active" id="categories-tab">
           <div class="category-management">
@@ -83,7 +81,6 @@
             </div>
           </div>
         </div>
-
         <!-- Forums Tab -->
         <div class="tab-content" id="forums-tab">
           <div class="forums-management">
@@ -156,7 +153,6 @@
             </div>
           </div>
         </div>
-
         <!-- Threads Tab -->
         <div class="tab-content" id="threads-tab">
           <div class="threads-management">

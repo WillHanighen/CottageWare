@@ -5,7 +5,7 @@ import asyncio
 import time
 from jose import JWTError, jwt
 from auth import SECRET_KEY, ALGORITHM
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2PasswordRequestForm
@@ -101,6 +101,14 @@ def verify_turnstile(turnstile_response):
     except Exception as e:
         print(f"Turnstile verification error: {e}")
         return False
+
+# Route for robots.txt
+@app.get("/robots.txt", include_in_schema=False)
+async def robots():
+    """
+    Serve robots.txt from the root URL.
+    """
+    return FileResponse("static/robots.txt")
 
 # Custom exception handlers
 @app.exception_handler(404)

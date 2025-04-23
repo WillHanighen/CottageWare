@@ -4,6 +4,7 @@
   <title>CottageWare - Admin Dashboard</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/css/admin.css">
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
@@ -11,7 +12,6 @@
 </head>
 <body>
   {% include 'includes/navbar.html' %}
-
   <!-- Main Content -->
   <main class="container">
     <section class="admin-panel">
@@ -19,7 +19,6 @@
         <h2><i class="fas fa-shield-alt"></i> Admin Dashboard</h2>
         <p>Welcome, {{ current_user.username }}. Manage site content and settings here.</p>
       </div>
-
       <div class="admin-stats-container">
         <div class="admin-stats">
           <div class="stat-card">
@@ -52,7 +51,6 @@
           </div>
         </div>
       </div>
-
       <div class="admin-modules">
         <div class="admin-module-row">
           <div class="admin-module-card">
@@ -109,7 +107,6 @@
       </div>
     </section>
   </main>
-
   {% include 'includes/footer.html' %}
   
   <script src="/static/js/admin.js"></script>

@@ -1,0 +1,7 @@
+# robots.txt for CottageWare
+
+User-agent: *
+Disallow: /
+
+# Disallow all robots from indexing any content on this site
+# This prevents search engines from crawling and indexing the site

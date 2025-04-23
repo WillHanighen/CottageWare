@@ -4,6 +4,7 @@
   <title>CottageWare - Admin Users</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/css/admin.css">
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
@@ -11,7 +12,6 @@
 </head>
 <body>
   {% include 'includes/navbar.html' %}
-
   <!-- Main Content -->
   <main class="container">
     <section class="admin-panel">
@@ -22,7 +22,6 @@
           <a href="/admin/users/new" class="btn btn-primary"><i class="fas fa-plus"></i> Add New User</a>
         </div>
       </div>
-
       <div class="admin-users">
         <div class="users-search">
           <input type="text" id="user-search" placeholder="Search users...">
@@ -35,7 +34,6 @@
             <option value="user">Regular Users</option>
           </select>
         </div>
-
         <div class="users-table">
           <table>
             <thead>
