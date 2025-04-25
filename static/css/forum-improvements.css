@@ -307,9 +307,19 @@
 
 .shoutbox-form {
   display: flex;
+  flex-direction: row;
+  align-items: center;
   padding: 12px;
   background-color: #1a1a1a;
   border-top: 1px solid #333;
+  gap: 8px;
+}
+
+.shoutbox-form form {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  align-items: center;
 }
 
 .shoutbox-form input {
@@ -319,12 +329,16 @@
   background-color: #2a2a2a;
   color: #f8f9fa;
   border-radius: 4px 0 0 4px;
-  outline: none;
-  transition: border-color 0.2s ease;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  margin: 0;
+  height: 38px;
 }
 
 .shoutbox-form input:focus {
+  outline: none;
   border-color: #00a8ff;
+  box-shadow: 0 0 0 2px rgba(0, 168, 255, 0.2);
 }
 
 .shoutbox-form button {
@@ -334,11 +348,19 @@
   border: none;
   border-radius: 0 4px 4px 0;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  margin: 0;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .shoutbox-form button:hover {
   background-color: #0088cc;
+  transform: translateY(0);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 /* Sidebar Improvements */
