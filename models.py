@@ -61,6 +61,7 @@ class UserProfile(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
+    display_name = Column(String(32), nullable=True)  # Display name (1-32 chars)
     bio = Column(Text, nullable=True)
     location = Column(String(100), nullable=True)
     website = Column(String(255), nullable=True)

@@ -5,15 +5,23 @@ Utility functions for CottageWare
 import re
 import markdown
 import bleach
-from typing import Optional
+from typing import Optional, List, Tuple, Dict, Any, Union
 from markdown.extensions.nl2br import Nl2BrExtension
 from markdown.extensions.extra import ExtraExtension
 from markdown.extensions.sane_lists import SaneListExtension
 from markdown.extensions.codehilite import CodeHiliteExtension
 from markdown.extensions.toc import TocExtension
 
-# Discord username regex pattern (username#discriminator format or new username format)
-DISCORD_USERNAME_PATTERN = r'^(?:(?:[a-zA-Z0-9_]{2,32})(?:#[0-9]{4})?|[a-zA-Z0-9_.]{2,32})$'
+# Regular expressions
+DISCORD_USERNAME_PATTERN = r'^(?=.{2,32}$)(?!(?:everyone|here)$)\.?[a-z0-9_]+(?:\.[a-z0-9_]+)*\.?$'
+discord_regex = re.compile(DISCORD_USERNAME_PATTERN)
+
+# Display name regex - allows Unicode letters, numbers, and most symbols except @, #, :, and backticks
+# Also disallows leading/trailing whitespace
+display_name_regex = re.compile(r'^[^\s@#:`][^@#:`]{0,30}[^\s@#:`]$|^[^\s@#:`]$')
+
+# Emoji detection regex pattern - simplified version to catch common emoji patterns
+emoji_pattern = re.compile("[\\U0001F000-\\U0001FFFF]|[\\U0001F900-\\U0001F9FF]|[\\U00002600-\\U000027BF]")
 
 # List of offensive words to filter
 OFFENSIVE_WORDS = [
@@ -22,7 +30,6 @@ OFFENSIVE_WORDS = [
 ]
 
 # Compile regex patterns
-discord_regex = re.compile(DISCORD_USERNAME_PATTERN)
 offensive_word_regex = re.compile(r'\b(' + '|'.join(OFFENSIVE_WORDS) + r')\b', re.IGNORECASE)
 
 def validate_discord_username(username: Optional[str]) -> tuple[bool, Optional[str]]:
@@ -33,8 +40,57 @@ def validate_discord_username(username: Optional[str]) -> tuple[bool, Optional[s
     if not username or username.strip() == '':
         return True, None  # Empty username is allowed
     
+    # Check length
+    if len(username) < 2 or len(username) > 32:
+        return False, "Discord username must be between 2 and 32 characters long."
+    
+    # Check for reserved names
+    if username.lower() in ['everyone', 'here']:
+        return False, "'everyone' and 'here' are reserved Discord names and cannot be used."
+    
+    # Check for valid characters and format
     if not discord_regex.match(username):
-        return False, "Invalid Discord username format. Use 'username#0000' or the new username format (2-32 characters)."
+        return False, "Invalid Discord username format. Only lowercase letters, numbers, underscores, and periods are allowed."
+    
+    # Check for consecutive periods
+    if '..' in username:
+        return False, "Discord username cannot contain consecutive periods."
+    
+    return True, None
+
+def validate_display_name(display_name: Optional[str]) -> tuple[bool, Optional[str]]:
+    """
+    Validates a display name according to the following rules:
+    - Allows most Unicode (letters, numbers, accented characters, etc.)
+    - Disallows @, #, :, backticks
+    - Disallows emoji
+    - Limits to 1-32 characters
+    - No leading/trailing whitespace
+    
+    Returns (is_valid, error_message)
+    """
+    if not display_name or display_name.strip() == '':
+        return True, None  # Empty display name is allowed
+    
+    # Check for leading/trailing whitespace
+    if display_name != display_name.strip():
+        return False, "Display name cannot have leading or trailing whitespace."
+    
+    # Check length
+    if len(display_name) < 1 or len(display_name) > 32:
+        return False, "Display name must be between 1 and 32 characters long."
+    
+    # Check for disallowed characters
+    if '@' in display_name or '#' in display_name or ':' in display_name or '`' in display_name:
+        return False, "Display name cannot contain @, #, :, or backticks."
+    
+    # Check for emoji
+    if emoji_pattern.search(display_name):
+        return False, "Display name cannot contain emoji."
+    
+    # Validate against regex pattern
+    if not display_name_regex.match(display_name):
+        return False, "Display name contains invalid characters or format."
     
     return True, None
 

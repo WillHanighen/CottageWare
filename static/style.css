@@ -2213,6 +2213,16 @@ footer p {
   justify-content: center;
 }
 
+.profile-account-name {
+  margin-bottom: 10px;
+  color: #999;
+  font-size: 0.9em;
+}
+
+.profile-account-name .username {
+  color: #00a8ff;
+}
+
 .profile-username {
   font-size: 32px;
   color: #f8f9fa;
@@ -2668,4 +2678,16 @@ blockquote {
   font-style: italic;
   color: #aaa;
   margin-bottom: 15px;
+}
+
+/* User Profile Links */
+.user-profile-link {
+  color: #a3d4ff;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.user-profile-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
 }

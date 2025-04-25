@@ -14,7 +14,7 @@
           <li><a href="/products" {% if '/products' in request.url.path %}class="active"{% endif %}>Products</a></li>
           {% if current_user %}
             <li><a href="/profile" {% if '/profile' in request.url.path %}class="active"{% endif %}>
-              {% if current_user.username %}{{ current_user.username }}{% else %}Profile{% endif %}
+              {% if current_user.profile and current_user.profile.display_name %}{{ current_user.profile.display_name }}{% elif current_user.username %}{{ current_user.username }}{% else %}Profile{% endif %}
             </a></li>
             {% if current_user.profile and current_user.profile.account_tier >= 4 %}
             <li><a href="/admin" {% if '/admin' in request.url.path %}class="active"{% endif %}>

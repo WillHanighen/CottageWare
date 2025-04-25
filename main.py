@@ -43,7 +43,7 @@ from auth import (
 )
 
 # Import utility functions
-from utils import validate_discord_username, filter_offensive_content, render_markdown
+from utils import validate_discord_username, validate_display_name, filter_offensive_content, render_markdown
 
 # Import requests for reCAPTCHA verification
 import requests
@@ -567,6 +567,7 @@ async def admin_save_user(
     email: str = Form(...),
     password: str = Form(None),
     account_tier: int = Form(1),
+    display_name: str = Form(""),
     bio: str = Form(""),
     location: str = Form(""),
     signature: str = Form(""),
@@ -582,6 +583,7 @@ async def admin_save_user(
         'email': email,
         'password': password,
         'account_tier': account_tier,
+        'display_name': display_name,
         'bio': bio,
         'location': location,
         'signature': signature,
@@ -1442,6 +1444,7 @@ async def profile_edit_page(request: Request, db: Session = Depends(get_db), cur
 async def profile_edit(request: Request, 
                       avatar_file: UploadFile = File(None), 
                       clipboard_image_data: str = Form(None),
+                      display_name: str = Form(None), 
                       bio: str = Form(None), 
                       location: str = Form(None), 
                       website: str = Form(None), 
@@ -1458,6 +1461,19 @@ async def profile_edit(request: Request,
     
     # Get user with related data
     user = db.query(User).filter(User.id == current_user.id).first()
+    
+    # Validate Display name
+    is_valid_display_name, display_name_error = validate_display_name(display_name)
+    if not is_valid_display_name:
+        return templates.TemplateResponse(
+            "edit_profile.html",
+            {
+                "request": request,
+                "current_user": current_user,
+                "user": user,
+                "error": display_name_error
+            }
+        )
     
     # Validate Discord username
     is_valid_discord, discord_error = validate_discord_username(discord)
@@ -1596,6 +1612,7 @@ async def profile_edit(request: Request,
         user.profile = UserProfile(user_id=user.id)
         db.add(user.profile)
     
+    user.profile.display_name = display_name
     user.profile.bio = bio
     user.profile.location = location
     user.profile.website = website
@@ -1800,7 +1817,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                     shoutbox_type = data.get("shoutbox_type", "public")
                     
                     print(f"[DEBUG] Received {shoutbox_type} shoutbox message: {content[:50]}{'...' if len(content) > 50 else ''}")
-                    print(f"[DEBUG] Message claims to be from user ID: {message_id}, user_id: {message_user_id}")
+                    print(f"[DEBUG] Message claims to be from user ID: {message_user_id}")
                     
                     # Process message if it has content and user information
                     if content and message_user_id and message_username:
@@ -1809,7 +1826,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                             message_user = db.query(User).filter(User.id == message_user_id).first()
                             
                             if not message_user:
-                                print(f"[DEBUG] User not found for message ID: {message_id}, user_id: {message_user_id}")
+                                print(f"[DEBUG] User not found for user_id: {message_user_id}")
                                 await websocket.send_json({
                                     "type": "error",
                                     "message": "Invalid user information. Please refresh the page and try again."
@@ -1836,18 +1853,34 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                             # Print authenticated user information for debugging
                             print(f"[DEBUG] Creating {shoutbox_type} message for verified user: {message_user.username} (ID: {message_user.id})")
                             
-                            # Create new shoutbox message with the verified user ID and shoutbox type
-                            new_message = Shoutbox(
-                                user_id=message_user.id,
-                                message=filtered_content,
-                                shoutbox_type=shoutbox_type
-                            )
-                            db.add(new_message)
-                            db.commit()
-                            print(f"[DEBUG] Saved new {shoutbox_type} shoutbox message with ID: {new_message.id} from user {message_user.username}")
-                            
-                            # Broadcast the message to all clients
-                            await broadcast_shoutbox_message(new_message, db)
+                            try:
+                                # Create new shoutbox message with the verified user ID and shoutbox type
+                                new_message = Shoutbox(
+                                    user_id=message_user.id,
+                                    message=filtered_content,
+                                    shoutbox_type=shoutbox_type
+                                )
+                                db.add(new_message)
+                                db.commit()
+                                db.refresh(new_message)  # Refresh to get the ID and created_at timestamp
+                                print(f"[DEBUG] Saved new {shoutbox_type} shoutbox message with ID: {new_message.id} from user {message_user.username}")
+                                
+                                # Broadcast the message to all clients
+                                await broadcast_shoutbox_message(new_message, db)
+                                
+                                # Send confirmation back to the sender
+                                await websocket.send_json({
+                                    "type": "message_confirmation",
+                                    "message_id": new_message.id,
+                                    "status": "success"
+                                })
+                            except Exception as e:
+                                print(f"[DEBUG] Error saving shoutbox message: {e}")
+                                # Send error back to the sender
+                                await websocket.send_json({
+                                    "type": "error",
+                                    "message": "Error saving your message. Please try again."
+                                })
                         except Exception as e:
                             print(f"[DEBUG] Error processing shoutbox message: {e}")
                     else:
@@ -1987,6 +2020,7 @@ async def broadcast_shoutbox_message(message: Shoutbox, db: Session):
                 "id": message.id,
                 "user_id": user.id,
                 "username": user.username,
+                "display_name": user.profile.display_name if user.profile and user.profile.display_name else None,
                 "avatar_url": user.avatar_url or '/static/images/default-avatar.png',
                 "message": message.message,
                 "created_at": message.created_at.isoformat(),
@@ -2056,6 +2090,7 @@ async def broadcast_online_users():
                 online_users.append({
                     "id": fresh_user.id,
                     "username": fresh_user.username,
+                    "display_name": fresh_user.profile.display_name if fresh_user.profile and fresh_user.profile.display_name else None,
                     "avatar_url": fresh_user.avatar_url or '/static/images/default-avatar.png',
                     "account_tier": account_tier,
                     "tier_name": tier_name,

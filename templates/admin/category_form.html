@@ -44,7 +44,10 @@
           </div>
           
           <div class="form-group checkbox-group">
-            <input type="checkbox" id="is_visible" name="is_visible" {% if not category or category.is_public %}checked{% endif %}>
+            <!-- Use a hidden field with a default value of 'off' -->
+            <input type="hidden" name="is_visible" value="off">
+            <!-- The checkbox will override the hidden field with 'on' when checked -->
+            <input type="checkbox" id="is_visible" name="is_visible" value="on" {% if not category or category.is_public %}checked{% endif %}>
             <label for="is_visible">Visible</label>
           </div>
           

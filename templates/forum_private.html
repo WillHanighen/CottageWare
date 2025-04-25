@@ -7,6 +7,7 @@
   
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/css/forum-layout.css">
+  <link rel="stylesheet" href="/static/css/forum-improvements.css">
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -25,8 +26,8 @@
           {% for message in shoutbox_messages %}
           <div class="shoutbox-message">
             <div class="message-author">
-              <img src="{{ message.user.avatar_url or '/static/images/default-avatar.png' }}" alt="{{ message.user.username }}" class="message-avatar">
-              <span class="message-username">{{ message.user.username }}</span>
+              <img src="{{ message.user.avatar_url or '/static/images/default-avatar.png' }}" alt="{{ message.user.profile.display_name or message.user.username }}" class="message-avatar">
+              <span class="message-username"><a href="/users/{{ message.user.username }}.{{ message.user.id }}" class="user-profile-link">{{ message.user.profile.display_name or message.user.username }}</a></span>
             </div>
             <div class="message-content">{{ message.message }}</div>
             <div class="message-time">{{ message.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
@@ -100,7 +101,7 @@
                   {% if forum.latest_thread %}
                   <div class="latest-title">Latest: <a href="/thread/{{ forum.latest_thread.id }}">{{ forum.latest_thread.title }}</a></div>
                   <div class="latest-time">{{ forum.latest_thread.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
-                  <div class="latest-user">{{ forum.latest_thread.author.username }}</div>
+                  <div class="latest-user"><a href="/users/{{ forum.latest_thread.author.username }}.{{ forum.latest_thread.author.id }}" class="user-profile-link">{{ forum.latest_thread.author.profile.display_name or forum.latest_thread.author.username }}</a></div>
                   {% else %}
                   <div class="latest-title">No threads yet</div>
                   {% endif %}
@@ -146,7 +147,7 @@
               <div class="latest-post">
                 <div class="post-title"><a href="/thread/{{ thread.id }}">{{ thread.title }}</a></div>
                 <div class="post-meta">
-                  <span class="post-author">{{ thread.author.username }}</span>
+                  <span class="post-author"><a href="/users/{{ thread.author.username }}.{{ thread.author.id }}" class="user-profile-link">{{ thread.author.profile.display_name or thread.author.username }}</a></span>
                   <span class="post-time">{{ thread.created_at.strftime('%m/%d/%Y %H:%M') }}</span>
                 </div>
               </div>
@@ -573,8 +574,8 @@
         // Create message HTML
         messageDiv.innerHTML = `
           <div class="message-author">
-            <img src="${message.avatar_url || '/static/images/default-avatar.png'}" alt="${message.username}" class="message-avatar">
-            <span class="message-username">${message.username}</span>
+            <img src="${message.avatar_url || '/static/images/default-avatar.png'}" alt="${message.display_name || message.username}" class="message-avatar">
+            <span class="message-username"><a href="/users/${message.username}.${message.user_id}" class="user-profile-link">${message.display_name || message.username}</a></span>
           </div>
           <div class="message-content">${message.message}</div>
           <div class="message-time">${formattedDate}</div>
@@ -618,8 +619,10 @@
         if (a.is_registered && !b.is_registered) return -1;
         if (!a.is_registered && b.is_registered) return 1;
         
-        // Then sort by username
-        return a.username.localeCompare(b.username);
+        // Then sort by display_name or username
+        const aName = a.display_name || a.username;
+        const bName = b.display_name || b.username;
+        return aName.localeCompare(bName);
       });
       
       // Add each online user
@@ -629,7 +632,7 @@
         
         // Create member content HTML with a badge for their tier
         memberDiv.innerHTML = `
-          <span class="member-name">${user.username}</span>
+          <span class="member-name"><a href="/users/${user.username}.${user.id}" class="user-profile-link">${user.display_name || user.username}</a></span>
           ${user.is_registered ? `<span class="member-tier tier-${user.account_tier}">${user.tier_name}</span>` : ''}
           <span class="member-status ${user.is_registered ? 'online' : 'guest'}"></span>
         `;

@@ -4,11 +4,11 @@
   <title>CottageWare - Forum Discussions</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Join the CottageWare community forums. Discuss ideas, share your projects, and connect with other cottage industry enthusiasts.">
+  <meta name="description" content="CottageWare Reselling, selling premium gaming products since 2025">
   
   <!-- OpenGraph Meta Tags for Social Media Sharing -->
   <meta property="og:title" content="CottageWare Forums - Join the Discussion">
-  <meta property="og:description" content="Connect with other cottage industry enthusiasts in our community forums. Share ideas, ask questions, and grow your network.">
+  <meta property="og:description" content="CottageWare Forums - CottageWare Reselling, selling premium gaming products since 2025">
   <meta property="og:image" content="/content/site-immagery/logo-transparent.svg">
   <meta property="og:url" content="https://cottageware.com/forum">
   <meta property="og:type" content="website">
@@ -17,11 +17,12 @@
   <!-- Twitter Card Meta Tags -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CottageWare Forums - Join the Discussion">
-  <meta name="twitter:description" content="Connect with other cottage industry enthusiasts in our community forums. Share ideas, ask questions, and grow your network.">
+  <meta name="twitter:description" content="CottageWare Forums - CottageWare Reselling, selling pre  gaming products since 2025">
   <meta name="twitter:image" content="/content/site-immagery/logo-transparent.svg">
   
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/css/forum-layout.css">
+  <link rel="stylesheet" href="/static/css/forum-improvements.css">
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -40,8 +41,8 @@
           {% for message in shoutbox_messages %}
           <div class="shoutbox-message">
             <div class="message-author">
-              <img src="{{ message.user.avatar_url or '/static/images/default-avatar.png' }}" alt="{{ message.user.username }}" class="message-avatar">
-              <span class="message-username">{{ message.user.username }}</span>
+              <img src="{{ message.user.avatar_url or '/static/images/default-avatar.png' }}" alt="{{ message.user.profile.display_name or message.user.username }}" class="message-avatar">
+              <span class="message-username"><a href="/users/{{ message.user.username }}.{{ message.user.id }}" class="user-profile-link">{{ message.user.profile.display_name or message.user.username }}</a></span>
             </div>
             <div class="message-content">{{ message.message }}</div>
             <div class="message-time">{{ message.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
@@ -115,7 +116,7 @@
                   {% if forum.latest_thread %}
                   <div class="latest-title">Latest: <a href="/thread/{{ forum.latest_thread.id }}">{{ forum.latest_thread.title }}</a></div>
                   <div class="latest-time">{{ forum.latest_thread.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
-                  <div class="latest-user">{{ forum.latest_thread.author.username }}</div>
+                  <div class="latest-user"><a href="/users/{{ forum.latest_thread.author.username }}.{{ forum.latest_thread.author.id }}" class="user-profile-link">{{ forum.latest_thread.author.profile.display_name or forum.latest_thread.author.username }}</a></div>
                   {% else %}
                   <div class="latest-title">No threads yet</div>
                   {% endif %}
@@ -161,7 +162,7 @@
               <div class="latest-post">
                 <div class="post-title"><a href="/thread/{{ thread.id }}">{{ thread.title }}</a></div>
                 <div class="post-meta">
-                  <span class="post-author">{{ thread.author.username }}</span>
+                  <span class="post-author">{{ thread.author.profile.display_name or thread.author.username }}</span>
                   <span class="post-time">{{ thread.created_at.strftime('%m/%d/%Y %H:%M') }}</span>
                 </div>
               </div>
@@ -485,6 +486,11 @@
                 }
               }
               break;
+            case 'message_confirmation':
+              console.log('[DEBUG] Message confirmation received:', data);
+              // Message was successfully saved on the server
+              // We could update the UI to show the message was delivered if needed
+              break;
             case 'error':
               console.error('[DEBUG] Received error message:', data.message);
               alert('Error: ' + data.message);
@@ -603,8 +609,8 @@
         // Create message HTML
         messageDiv.innerHTML = `
           <div class="message-author">
-            <img src="${message.avatar_url || '/static/images/default-avatar.png'}" alt="${message.username}" class="message-avatar">
-            <span class="message-username">${message.username}</span>
+            <img src="${message.avatar_url || '/static/images/default-avatar.png'}" alt="${message.display_name || message.username}" class="message-avatar">
+            <span class="message-username"><a href="/users/${message.username}.${message.user_id}" class="user-profile-link">${message.display_name || message.username}</a></span>
           </div>
           <div class="message-content">${message.message}</div>
           <div class="message-time">${formattedDate}</div>
@@ -668,8 +674,10 @@
         if (a.is_registered && !b.is_registered) return -1;
         if (!a.is_registered && b.is_registered) return 1;
         
-        // Then sort by username
-        return a.username.localeCompare(b.username);
+        // Then sort by display_name or username
+        const aName = a.display_name || a.username;
+        const bName = b.display_name || b.username;
+        return aName.localeCompare(bName);
       });
       
       // Add each online user
@@ -679,7 +687,7 @@
         
         // Create member content HTML with a badge for their tier
         memberDiv.innerHTML = `
-          <span class="member-name">${user.username}</span>
+          <span class="member-name"><a href="/users/${user.username}.${user.id}" class="user-profile-link">${user.display_name || user.username}</a></span>
           ${user.is_registered ? `<span class="member-tier tier-${user.account_tier}">${user.tier_name}</span>` : ''}
           <span class="member-status ${user.is_registered ? 'online' : 'guest'}"></span>
         `;
@@ -704,6 +712,9 @@
       const message = messageInput.value.trim();
       const userId = userIdElement.value.trim();
       const username = usernameElement.value.trim();
+      // Get display name from the navbar if available
+      const navProfileLink = document.querySelector('.nav-profile-link');
+      const displayName = navProfileLink ? navProfileLink.textContent.trim() : null;
       
       // Don't send empty messages
       if (!message) {
@@ -716,6 +727,7 @@
         content: message,
         user_id: userId,
         username: username,
+        display_name: displayName,
         shoutbox_type: messageType
       };
       
@@ -799,11 +811,14 @@
         shoutboxForm.addEventListener('submit', function(e) {
           e.preventDefault();
           
-          // Get user ID and username from hidden fields
+          // Get user ID, username, and display name from hidden fields
           const userIdField = document.getElementById('current-user-id');
           const usernameField = document.getElementById('current-username');
           const userId = userIdField ? userIdField.value : null;
           const username = usernameField ? usernameField.value : null;
+          // Get display name from the navbar if available
+          const navProfileLink = document.querySelector('.nav-profile-link');
+          const displayName = navProfileLink ? navProfileLink.textContent.trim() : null;
           
           if (!userId || !username) {
             console.error('User ID or username not found');

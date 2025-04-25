@@ -61,6 +61,13 @@
             </div>
             
             <div class="form-group">
+                <label for="display_name">Display Name</label>
+                <input type="text" id="display_name" name="display_name" class="form-control" value="{{ user.profile.display_name or '' }}" maxlength="32">
+                <small class="form-text text-muted">Enter a display name (1-32 characters). Cannot contain @, #, :, backticks, or emoji.</small>
+                <div class="invalid-feedback" id="display-name-error">Please enter a valid display name.</div>
+            </div>
+            
+            <div class="form-group">
                 <label for="location">Location</label>
                 <input type="text" id="location" name="location" class="form-control" value="{{ user.profile.location or '' }}">
             </div>
@@ -72,7 +79,9 @@
             
             <div class="form-group">
                 <label for="discord">Discord Username</label>
-                <input type="text" id="discord" name="discord" class="form-control" value="{{ user.profile.discord or '' }}">
+                <input type="text" id="discord" name="discord" class="form-control" value="{{ user.profile.discord or '' }}" pattern="^(?=.{2,32}$)(?!(?:everyone|here)$)\.?[a-z0-9_]+(?:\.[a-z0-9_]+)*\.?$">
+                <small class="form-text text-muted">Enter a valid Discord username (2-32 characters, lowercase letters, numbers, underscores, and periods). Cannot be 'everyone' or 'here'.</small>
+                <div class="invalid-feedback" id="discord-error">Please enter a valid Discord username format.</div>
             </div>
             
             <div class="form-group">
@@ -89,6 +98,79 @@
     </div>
   </main>
   {% include 'includes/footer.html' %}
+  <!-- Modern Notification System -->
+  <div id="notification-container" class="notification-container"></div>
+  
+  <style>
+    .notification-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      max-width: 350px;
+    }
+    
+    .notification {
+      background-color: #fff;
+      border-radius: 6px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+      margin-bottom: 10px;
+      padding: 15px;
+      transform: translateX(400px);
+      transition: transform 0.3s ease-out;
+      display: flex;
+      align-items: flex-start;
+    }
+    
+    .notification.show {
+      transform: translateX(0);
+    }
+    
+    .notification-icon {
+      margin-right: 12px;
+      font-size: 20px;
+    }
+    
+    .notification-content {
+      flex: 1;
+    }
+    
+    .notification-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .notification-message {
+      margin: 0;
+    }
+    
+    .notification-close {
+      background: none;
+      border: none;
+      color: #999;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0;
+      margin-left: 10px;
+    }
+    
+    .notification-success {
+      border-left: 4px solid #4caf50;
+    }
+    
+    .notification-error {
+      border-left: 4px solid #f44336;
+    }
+    
+    .notification-warning {
+      border-left: 4px solid #ff9800;
+    }
+    
+    .notification-info {
+      border-left: 4px solid #2196f3;
+    }
+  </style>
+  
   <!-- Profile Picture Upload Script -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -98,6 +180,65 @@
       const clipboardImageData = document.getElementById('clipboard_image_data');
       const previewImage = document.getElementById('preview-image');
       const previewPlaceholder = document.getElementById('preview-placeholder');
+      const discordInput = document.getElementById('discord');
+      const discordError = document.getElementById('discord-error');
+      const displayNameInput = document.getElementById('display_name');
+      const displayNameError = document.getElementById('display-name-error');
+      const form = document.querySelector('.profile-edit-form');
+      const notificationContainer = document.getElementById('notification-container');
+      
+      // Modern notification system
+      function showNotification(type, title, message, duration = 5000) {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        
+        let iconClass = '';
+        switch(type) {
+          case 'success': iconClass = '✓'; break;
+          case 'error': iconClass = '✕'; break;
+          case 'warning': iconClass = '⚠'; break;
+          case 'info': iconClass = 'ℹ'; break;
+          default: iconClass = 'ℹ';
+        }
+        
+        notification.innerHTML = `
+          <div class="notification-icon">${iconClass}</div>
+          <div class="notification-content">
+            <div class="notification-title">${title}</div>
+            <p class="notification-message">${message}</p>
+          </div>
+          <button class="notification-close">&times;</button>
+        `;
+        
+        notificationContainer.appendChild(notification);
+        
+        // Show notification with animation
+        setTimeout(() => {
+          notification.classList.add('show');
+        }, 10);
+        
+        // Set up close button
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', () => {
+          closeNotification(notification);
+        });
+        
+        // Auto close after duration
+        if (duration) {
+          setTimeout(() => {
+            closeNotification(notification);
+          }, duration);
+        }
+        
+        return notification;
+      }
+      
+      function closeNotification(notification) {
+        notification.classList.remove('show');
+        setTimeout(() => {
+          notification.remove();
+        }, 300);
+      }
       
       // Function to update preview image
       function updatePreview(file) {
@@ -135,6 +276,119 @@
         }
       });
       
+      // Discord username validation
+      function validateDiscordUsername(username) {
+        if (!username || username.trim() === '') {
+          return true; // Empty is allowed
+        }
+        
+        const discordRegex = /^(?=.{2,32}$)(?!(?:everyone|here)$)\.?[a-z0-9_]+(?:\.[a-z0-9_]+)*\.?$/;
+        return discordRegex.test(username);
+      }
+      
+      // Display name validation
+      function validateDisplayName(displayName) {
+        if (!displayName || displayName.trim() === '') {
+          return true; // Empty is allowed
+        }
+        
+        // Check for leading/trailing whitespace
+        if (displayName !== displayName.trim()) {
+          return false;
+        }
+        
+        // Check length
+        if (displayName.length < 1 || displayName.length > 32) {
+          return false;
+        }
+        
+        // Check for disallowed characters
+        if (displayName.includes('@') || displayName.includes('#') || 
+            displayName.includes(':') || displayName.includes('`')) {
+          return false;
+        }
+        
+        // Check for emoji (simplified check)
+        const emojiRegex = /[\u{1F000}-\u{1FFFF}|\u{1F900}-\u{1F9FF}|\u{2600}-\u{27BF}]/u;
+        if (emojiRegex.test(displayName)) {
+          return false;
+        }
+        
+        return true;
+      }
+      
+      // Add validation for Discord username field
+      if (discordInput) {
+        discordInput.addEventListener('input', function() {
+          const isValid = validateDiscordUsername(this.value);
+          if (isValid) {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+          } else {
+            this.classList.remove('is-valid');
+            this.classList.add('is-invalid');
+            discordError.style.display = 'block';
+          }
+        });
+      }
+      
+      // Add validation for Display name field
+      if (displayNameInput) {
+        displayNameInput.addEventListener('input', function() {
+          const isValid = validateDisplayName(this.value);
+          if (isValid) {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+          } else {
+            this.classList.remove('is-valid');
+            this.classList.add('is-invalid');
+            displayNameError.style.display = 'block';
+          }
+        });
+      }
+      
+      // Form validation before submission
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          let hasErrors = false;
+          
+          // Validate Display name
+          if (displayNameInput && displayNameInput.value.trim() !== '') {
+            const isDisplayNameValid = validateDisplayName(displayNameInput.value);
+            if (!isDisplayNameValid) {
+              e.preventDefault();
+              displayNameInput.classList.add('is-invalid');
+              displayNameError.style.display = 'block';
+              showNotification('error', 'Validation Error', 'Please enter a valid display name.');
+              hasErrors = true;
+            }
+          }
+          
+          // Validate Discord username
+          if (discordInput && discordInput.value.trim() !== '') {
+            const isDiscordValid = validateDiscordUsername(discordInput.value);
+            if (!isDiscordValid) {
+              e.preventDefault();
+              discordInput.classList.add('is-invalid');
+              discordError.style.display = 'block';
+              showNotification('error', 'Validation Error', 'Please enter a valid Discord username.');
+              hasErrors = true;
+            }
+          }
+          
+          if (hasErrors) {
+            // Scroll to the first error field
+            const firstInvalidField = document.querySelector('.is-invalid');
+            if (firstInvalidField) {
+              firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return false;
+          }
+          
+          return true;
+        });
+      }
+      
       // Handle paste from clipboard
       pasteButton.addEventListener('click', function() {
         navigator.clipboard.read().then(items => {
@@ -168,7 +422,7 @@
           }
         }).catch(err => {
           console.error('Error reading from clipboard:', err);
-          alert('Could not access clipboard. Please check your browser permissions.');
+          showNotification('error', 'Clipboard Error', 'Could not access clipboard. Please check your browser permissions.');
         });
       });
       

@@ -26,8 +26,11 @@
         </div>
         <div class="profile-info">
           <h2 class="profile-username">
-            <a href="/users/{{ user.username }}.{{ user.id }}" class="profile-link">{{ user.username }}</a>
+            <a href="/users/{{ user.username }}.{{ user.id }}" class="profile-link">{{ user.profile.display_name or user.username }}</a>
           </h2>
+          <div class="profile-account-name">
+            <span class="username">@{{ user.username }}</span>
+          </div>
           <div class="profile-roles">
             {% for role in user.roles %}
               <span class="role-badge {{ role.name }}">{{ role.name }}</span>

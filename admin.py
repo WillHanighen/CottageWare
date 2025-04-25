@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 import os
 import math
 import time
+import re
 from sqlalchemy import func, desc, or_, and_
 import uuid
 from datetime import datetime
@@ -289,9 +290,52 @@ async def user_toggle(db: Session, current_user: User, user_id: int):
     return RedirectResponse(url=f"/admin/users?success=User+status+updated", status_code=303)
 
 async def user_save(db: Session, current_user: User, form_data: dict, avatar_file=None):
-    """Save user data"""
+    """Save user data with enhanced validation"""
+    # Import validation functions
+    from utils import validate_discord_username, filter_offensive_content, validate_display_name
+    
     user_id = form_data.get('user_id')
     is_new = user_id is None or user_id == ''
+    
+    # Validate required fields
+    username = form_data.get('username', '').strip()
+    email = form_data.get('email', '').strip()
+    
+    if not username:
+        return RedirectResponse(
+            url="/admin/users?error=Username+is+required",
+            status_code=303
+        )
+        
+    if not email:
+        return RedirectResponse(
+            url="/admin/users?error=Email+is+required",
+            status_code=303
+        )
+    
+    # Validate username format
+    if len(username) < 3 or len(username) > 32:
+        return RedirectResponse(
+            url="/admin/users?error=Username+must+be+between+3+and+32+characters",
+            status_code=303
+        )
+    
+    # Validate email format
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+        return RedirectResponse(
+            url="/admin/users?error=Invalid+email+format",
+            status_code=303
+        )
+    
+    # Validate Discord username if provided
+    discord_username = form_data.get('discord', '').strip()
+    if discord_username:
+        is_valid_discord, discord_error = validate_discord_username(discord_username)
+        if not is_valid_discord:
+            return RedirectResponse(
+                url=f"/admin/users?error={discord_error.replace(' ', '+')}",
+                status_code=303
+            )
     
     if is_new:
         # Check if username or email already exists
@@ -319,13 +363,40 @@ async def user_save(db: Session, current_user: User, form_data: dict, avatar_fil
         db.add(user)
         db.flush()  # Get the user ID
         
+        # Validate bio and signature content
+        bio = form_data.get('bio', '').strip()
+        signature = form_data.get('signature', '').strip()
+        location = form_data.get('location', '').strip()
+        
+        # Filter offensive content from bio and signature
+        bio_is_clean, filtered_bio, bio_error = filter_offensive_content(bio)
+        sig_is_clean, filtered_signature, sig_error = filter_offensive_content(signature)
+        
+        # If content contains offensive language, use filtered content and log it
+        if not bio_is_clean or not sig_is_clean:
+            print(f"Admin {current_user.username} attempted to save user with offensive content: {bio_error or ''} {sig_error or ''}")
+            bio = filtered_bio
+            signature = filtered_signature
+        
+        # Validate display name if provided
+        display_name = form_data.get('display_name', '').strip()
+        if display_name:
+            is_valid_display_name, display_name_error = validate_display_name(display_name)
+            if not is_valid_display_name:
+                return RedirectResponse(
+                    url=f"/admin/users?error={display_name_error.replace(' ', '+')}",
+                    status_code=303
+                )
+
         # Create profile
         profile = UserProfile(
             user_id=user.id,
             account_tier=int(form_data.get('account_tier', 1)),
-            bio=form_data.get('bio', ''),
-            location=form_data.get('location', ''),
-            signature=form_data.get('signature', '')
+            bio=bio,
+            location=location,
+            discord=discord_username,
+            signature=signature,
+            display_name=display_name
         )
         db.add(profile)
         
@@ -359,12 +430,50 @@ async def user_save(db: Session, current_user: User, form_data: dict, avatar_fil
         if form_data.get('password'):
             user.hashed_password = get_password_hash(form_data.get('password'))
         
-        # Update profile
+        # Validate bio and signature content for existing user
+        bio = form_data.get('bio', '').strip()
+        signature = form_data.get('signature', '').strip()
+        location = form_data.get('location', '').strip()
+        
+        # Validate display name if provided
+        display_name = form_data.get('display_name', '').strip()
+        if display_name:
+            is_valid_display_name, display_name_error = validate_display_name(display_name)
+            if not is_valid_display_name:
+                return RedirectResponse(
+                    url=f"/admin/users/{user.id}/edit?error={display_name_error.replace(' ', '+')}",
+                    status_code=303
+                )
+        
+        # Filter offensive content from bio and signature
+        bio_is_clean, filtered_bio, bio_error = filter_offensive_content(bio)
+        sig_is_clean, filtered_signature, sig_error = filter_offensive_content(signature)
+        
+        # If content contains offensive language, use filtered content and log it
+        if not bio_is_clean or not sig_is_clean:
+            print(f"Admin {current_user.username} attempted to update user with offensive content: {bio_error or ''} {sig_error or ''}")
+            bio = filtered_bio
+            signature = filtered_signature
+        
+        # Update profile data
         if user.profile:
             user.profile.account_tier = int(form_data.get('account_tier', 1))
-            user.profile.bio = form_data.get('bio', '')
-            user.profile.location = form_data.get('location', '')
-            user.profile.signature = form_data.get('signature', '')
+            user.profile.bio = bio
+            user.profile.location = location
+            user.profile.discord = discord_username
+            user.profile.signature = signature
+            user.profile.display_name = display_name
+        else:
+            # Create profile if it doesn't exist
+            profile = UserProfile(
+                user_id=user.id,
+                account_tier=int(form_data.get('account_tier', 1)),
+                bio=bio,
+                location=location,
+                discord=discord_username,
+                signature=signature
+            )
+            db.add(profile)
     
     # Handle avatar upload
     if avatar_file and avatar_file.filename:
@@ -473,7 +582,10 @@ async def category_save(db: Session, current_user: User, form_data: dict):
         category.name = form_data.get('name')
         category.description = form_data.get('description', '')
         category.order = int(form_data.get('display_order', 0))
-        category.is_public = form_data.get('is_visible') == 'on'
+        # Get the is_public value directly from form_data
+        category.is_public = form_data.get('is_public', False)
+        # Print debug info
+        print(f"[DEBUG] Category visibility: is_public={category.is_public}")
     
     db.commit()
     

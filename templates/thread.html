@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/forum-improvements.css">
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <!-- Add syntax highlighting styles for code blocks in markdown -->
@@ -61,14 +62,14 @@
             <div class="post-author">
               <div class="author-avatar">
                 {% if thread.author.avatar_url %}
-                  <img src="{{ thread.author.avatar_url }}" alt="{{ thread.author.username }}" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
+                  <img src="{{ thread.author.avatar_url }}" alt="{{ thread.author.profile.display_name or thread.author.username }}" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
                 {% else %}
                   <div class="avatar-placeholder">
                     {{ thread.author.username[0].upper() }}
                   </div>
                 {% endif %}
               </div>
-              <div class="author-name">{{ thread.author.username }}</div>
+              <div class="author-name"><a href="/users/{{ thread.author.username }}.{{ thread.author.id }}" class="user-profile-link">{{ thread.author.profile.display_name or thread.author.username }}</a></div>
               <div class="author-role">
                 {% for role in thread.author.roles %}
                   <span class="role-badge">{{ role.name }}</span>
@@ -124,14 +125,14 @@
               <div class="post-author">
                 <div class="author-avatar">
                   {% if post.author.avatar_url %}
-                    <img src="{{ post.author.avatar_url }}" alt="{{ post.author.username }}" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
+                    <img src="{{ post.author.avatar_url }}" alt="{{ post.author.profile.display_name or post.author.username }}" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
                   {% else %}
                     <div class="avatar-placeholder">
                       {{ post.author.username[0].upper() }}
                     </div>
                   {% endif %}
                 </div>
-                <div class="author-name">{{ post.author.username }}</div>
+                <div class="author-name"><a href="/users/{{ post.author.username }}.{{ post.author.id }}" class="user-profile-link">{{ post.author.profile.display_name or post.author.username }}</a></div>
                 <div class="author-role">
                   {% for role in post.author.roles %}
                     <span class="role-badge">{{ role.name }}</span>

@@ -584,6 +584,69 @@
   gap: 15px;
 }
 
+/* Admin Notification System */
+.admin-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  max-width: 350px;
+  background-color: var(--admin-bg-card);
+  border-radius: 6px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transform: translateX(400px);
+  transition: transform 0.3s ease-out;
+  z-index: 9999;
+  border: 1px solid var(--admin-border);
+}
+
+.admin-notification.show {
+  transform: translateX(0);
+}
+
+.admin-notification.success {
+  border-left: 4px solid var(--admin-success);
+}
+
+.admin-notification.error {
+  border-left: 4px solid var(--admin-danger);
+}
+
+.admin-notification.warning {
+  border-left: 4px solid var(--admin-warning);
+}
+
+.admin-notification.info {
+  border-left: 4px solid var(--admin-primary);
+}
+
+.notification-content {
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notification-message {
+  color: var(--admin-text);
+  font-size: 0.95rem;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  margin-left: 10px;
+  transition: color 0.2s ease;
+}
+
+.notification-close:hover {
+  color: var(--admin-text);
+}
+
 /* Responsive */
 @media (max-width: 992px) {
   .admin-stats {
