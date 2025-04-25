@@ -7,7 +7,7 @@
   
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/css/admin.css">
-  <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
+  <link rel="icon" href="/static/site-immagery/logo-transparent.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
@@ -158,7 +158,7 @@
               <div class="form-group">
                 <label for="logo">Site Logo</label>
                 <div class="logo-preview">
-                  <img src="{{ settings.logo if settings and settings.logo else '/content/site-immagery/logo-transparent.svg' }}" alt="Site Logo" id="logo-preview-img">
+                  <img src="{{ settings.logo if settings and settings.logo else '/static/site-immagery/logo-transparent.svg' }}" alt="Site Logo" id="logo-preview-img">
                 </div>
                 <input type="file" id="logo" name="logo" accept="image/*">
                 <div class="form-help">Recommended size: 200x200px, SVG or PNG with transparency</div>
@@ -167,7 +167,7 @@
               <div class="form-group">
                 <label for="favicon">Favicon</label>
                 <div class="favicon-preview">
-                  <img src="{{ settings.favicon if settings and settings.favicon else '/content/site-immagery/logo-transparent.svg' }}" alt="Favicon" id="favicon-preview-img">
+                  <img src="{{ settings.favicon if settings and settings.favicon else '/static/site-immagery/logo-transparent.svg' }}" alt="Favicon" id="favicon-preview-img">
                 </div>
                 <input type="file" id="favicon" name="favicon" accept="image/png,image/x-icon,image/svg+xml">
                 <div class="form-help">Recommended size: 32x32px, PNG or ICO format</div>

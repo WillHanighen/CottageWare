@@ -1539,7 +1539,7 @@ async def profile_edit(request: Request,
         
         # Create unique filename
         unique_filename = f"{uuid.uuid4()}{file_ext}"
-        file_path = os.path.join("content", "profile-pics", unique_filename)
+        file_path = os.path.join("static", "uploads", "profile-pics", unique_filename)
         
         # Save the file
         try:
@@ -1547,7 +1547,7 @@ async def profile_edit(request: Request,
                 shutil.copyfileobj(avatar_file.file, buffer)
             
             # Update user avatar URL
-            user.avatar_url = f"/content/profile-pics/{unique_filename}"
+            user.avatar_url = f"/static/uploads/profile-pics/{unique_filename}"
         except Exception as e:
             print(f"Error saving profile picture: {e}")
             return templates.TemplateResponse(
@@ -1589,14 +1589,14 @@ async def profile_edit(request: Request,
             
             # Create unique filename
             unique_filename = f"{uuid.uuid4()}{file_ext}"
-            file_path = os.path.join("content", "profile-pics", unique_filename)
+            file_path = os.path.join("static", "uploads", "profile-pics", unique_filename)
             
             # Save the file
             with open(file_path, "wb") as f:
                 f.write(image_data)
                 
             # Update user avatar URL
-            user.avatar_url = f"/content/profile-pics/{unique_filename}"
+            user.avatar_url = f"/static/uploads/profile-pics/{unique_filename}"
         except Exception as e:
             print(f"Error saving clipboard image: {e}")
             return templates.TemplateResponse(
