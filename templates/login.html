@@ -24,6 +24,31 @@
   <link rel="icon" href="/content/site-immagery/logo-transparent.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <style>
+    /* Google button styling to match other buttons */
+    .oauth-btn.google-btn {
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      padding: 10px 15px;
+      border-radius: 4px;
+      background-color: #00a8ff;
+      color: white;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      position: relative;
+      top: 0;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s ease !important;
+      transform: translateY(0);
+    }
+    
+    .oauth-btn.google-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      background-color: #0095e6;
+    }    
+  </style>
 </head>
 <body>
   {% include 'includes/navbar.html' %}

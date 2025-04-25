@@ -1262,7 +1262,8 @@ async def auth_google():
     """
     Redirects to Google OAuth login.
     """
-    return await google_sso.get_login_redirect()
+    async with google_sso:
+        return await google_sso.get_login_redirect()
 
 @app.get("/auth/google/callback")
 async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
@@ -1270,7 +1271,8 @@ async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
     Handles Google OAuth callback.
     """
     try:
-        user_data = await google_sso.verify_and_process(request)
+        async with google_sso:
+            user_data = await google_sso.verify_and_process(request)
         
         # Get or create user
         oauth_id = user_data.id

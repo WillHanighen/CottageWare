@@ -91,14 +91,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Get purchase button
-        const purchaseButton = productCard.querySelector('.sellapp-button-container').cloneNode(true);
+        const purchaseButton = productCard.querySelector('.sellapp-button-container button');
         
-        // Populate popup
+        // Set popup content
+        const popupContent = document.querySelector('.product-popup-content');
         popupContent.querySelector('.product-popup-title').textContent = title;
         popupContent.querySelector('.product-popup-image-content').innerHTML = imageContent;
         popupContent.querySelector('.product-popup-description').innerHTML = description;
         popupContent.querySelector('.product-popup-price').innerHTML = priceElement.innerHTML;
-        popupContent.querySelector('.product-popup-actions').innerHTML = purchaseButton.outerHTML;
+        
+        // Add TOS checkbox and purchase button
+        const actionsContainer = popupContent.querySelector('.product-popup-actions');
+        actionsContainer.innerHTML = `
+            <div class="tos-checkbox-container">
+                <label class="tos-checkbox-label">
+                    <input type="checkbox" id="tos-checkbox" class="tos-checkbox">
+                    I have read and accept the <a href="/terms_of_service" target="_blank">Terms of Service</a> and <a href="/privacy_policy" target="_blank">Privacy Policy</a>
+                </label>
+            </div>
+            ${purchaseButton.outerHTML}
+        `;
+        
+        // Get the newly added elements
+        const tosCheckbox = actionsContainer.querySelector('#tos-checkbox');
+        const popupPurchaseButton = actionsContainer.querySelector('button');
+        
+        // Disable the purchase button initially
+        popupPurchaseButton.disabled = true;
+        popupPurchaseButton.style.opacity = '0.5';
+        popupPurchaseButton.style.cursor = 'not-allowed';
+        
+        // Enable/disable purchase button based on checkbox
+        tosCheckbox.addEventListener('change', function() {
+            popupPurchaseButton.disabled = !this.checked;
+            popupPurchaseButton.style.opacity = this.checked ? '1' : '0.5';
+            popupPurchaseButton.style.cursor = this.checked ? 'pointer' : 'not-allowed';
+        });
         
         // Initialize Sell.app button in the popup
         if (window.SellApp && typeof window.SellApp.init === 'function') {

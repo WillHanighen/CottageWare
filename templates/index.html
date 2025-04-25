@@ -88,7 +88,7 @@
               {% else %}
                 <div class="product-price">${{ product.price }}</div>
               {% endif %}
-              <div class="sellapp-button-container">
+              <div class="sellapp-button-container" style="display: none;">
                 <button
                   data-sell-store="{{ sellapp_store_id }}"
                   data-sell-product="{{ product.product_id }}"
@@ -113,16 +113,6 @@
               <h3 class="product-title">Premium Gaming Package</h3>
               <p class="product-description">Get access to our exclusive gaming content and tools with our premium package.</p>
               <div class="product-price">$49.99</div>
-              <div class="sellapp-button-container">
-                <button
-                  data-sell-store="{{ sellapp_store_id }}"
-                  data-sell-product="293918"
-                  data-sell-theme=""
-                  data-sell-darkmode="true"
-                >
-                  Purchase
-                </button>
-              </div>
             </div>
           </div>
         {% endif %}
