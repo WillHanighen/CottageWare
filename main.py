@@ -69,7 +69,7 @@ app.add_middleware(
 
 # Mounting static files at /static route
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/content", StaticFiles(directory="content"), name="content")
+# Content is now inside static directory
 
 # Create upload directories if they don't exist
 os.makedirs(os.path.join("static", "uploads", "profile-pics"), exist_ok=True)
