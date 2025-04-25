@@ -26,7 +26,7 @@
           {% for message in shoutbox_messages %}
           <div class="shoutbox-message">
             <div class="message-author">
-              <img src="{{ message.user.avatar_url or '/static/images/default-avatar.png' }}" alt="{{ message.user.profile.display_name or message.user.username }}" class="message-avatar">
+              <img src="{{ message.user.avatar_url or '/static/images/default-avatar.png' }}" alt="{{ message.user.profile.display_name or message.user.username }}" class="message-avatar" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
               <span class="message-username"><a href="/users/{{ message.user.username }}.{{ message.user.id }}" class="user-profile-link">{{ message.user.profile.display_name or message.user.username }}</a></span>
             </div>
             <div class="message-content">{{ message.message }}</div>
@@ -166,63 +166,57 @@
   
   <!-- WebSocket Script -->
   <script>
-    // WebSocket variables
+    // WebSocket variables with simplified approach
     let socket = null;
     let socketReady = false;
-    let isConnecting = false; // Flag to prevent multiple connection attempts
+    let isConnecting = false;
     let reconnectAttempts = 0;
     let reconnectTimer = null;
-    let connectionTimer = null;
-    const RECONNECT_DELAY = 1000; // Start with 1 second
-    const MAX_RECONNECT_DELAY = 30000; // Cap at 30 seconds
-    const MAX_RECONNECT_ATTEMPTS = 10;
-    const CONNECTION_TIMEOUT = 15000; // Extended to 15 seconds timeout for connection
+    const RECONNECT_DELAY = 2000; 
+    const MAX_RECONNECT_ATTEMPTS = 5;
     let pendingMessages = []; // Store messages that couldn't be sent due to connection issues
-    // Function to connect to WebSocket
+    // Function to connect WebSocket - simplified approach
     function connectWebSocket() {
       console.log('[DEBUG] Starting WebSocket connection attempt');
       
-      // Check if already connecting or connected
+      // Prevent multiple connection attempts
       if (isConnecting) {
         console.log('[DEBUG] Connection attempt already in progress, aborting');
         return;
       }
       
-      // Set connecting flag immediately
+      // Set connecting flag
       isConnecting = true;
-      // Handle existing socket properly before creating a new one
-      if (socket !== null) {
-        console.log('[DEBUG] Existing socket found, checking state...');
-        
-        // Only close if it's not already closed or closing
-        if (socket.readyState !== WebSocket.CLOSED && socket.readyState !== WebSocket.CLOSING) {
-          console.log('[DEBUG] Closing existing socket before creating new one');
-          try {
-            socket.close();
-            
-            // Allow some time for the socket to close properly before creating a new one
-            setTimeout(function() {
-              console.log('[DEBUG] Continuing after socket close');
-              continueConnect();
-            }, 500);
-            return; // Exit and let the timeout callback continue the process
-          } catch (e) {
-            console.error('[DEBUG] Error closing existing socket:', e);
-          }
-        } else {
-          console.log('[DEBUG] Existing socket already closed or closing');
-        }
+      
+      // Clear any existing reconnect timer
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
       }
       
-      // Either no existing socket or it was already closed - continue with connection
-      console.log('[DEBUG] Proceeding to create new connection');
-      continueConnect();
-    }
-    // Continue the connection process after handling the existing socket
-    function continueConnect() {
-      // Set to null to ensure garbage collection of any previous socket
-      socket = null;
+      // Close any existing socket
+      if (socket !== null) {
+        console.log('[DEBUG] Closing existing socket');
+        try {
+          socket.onclose = null; // Remove listeners to prevent cascading events
+          socket.onerror = null;
+          socket.onopen = null;
+          socket.onmessage = null;
+          socket.close();
+        } catch (e) {
+          console.error('[DEBUG] Error closing socket:', e);
+        }
+        socket = null;
+      }
       
+      // Small delay before creating a new connection
+      setTimeout(function() {
+        socketReady = false;
+        initializeWebSocket();
+      }, 500);
+    }
+    // Initialize WebSocket connection
+    function initializeWebSocket() {
       // Get access token from cookies
       function getCookie(name) {
         const value = `; ${document.cookie}`;
@@ -231,7 +225,7 @@
       }
       
       const token = getCookie('access_token');
-      console.log('[DEBUG] Found access_token:', token ? 'yes (token exists)' : 'no');
+      console.log('[DEBUG] Found access_token:', token ? 'yes' : 'no');
       
       // WebSocket connection handling
       let wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -247,10 +241,6 @@
       // Add token if available
       if (token) {
         queryParams.push(`token=${encodeURIComponent(token)}`);
-        console.log('[DEBUG] Adding token to WebSocket URL');
-        console.log('[DEBUG] Token (truncated):', token.substring(0, 10) + '...');
-      } else {
-        console.log('[DEBUG] No token available for WebSocket authentication');
       }
       
       // Add user information if available
@@ -266,146 +256,19 @@
       }
       
       console.log('[DEBUG] Connecting to WebSocket URL:', wsUrl);
-      
-      // Update status indicator
       updateConnectionStatus('connecting');
       
-      // Create new WebSocket connection with error handling
       try {
-        console.log('[DEBUG] Creating new WebSocket connection to', wsUrl);
+        // Create new WebSocket connection
         socket = new WebSocket(wsUrl);
-        updateConnectionStatus('connecting');
         
-        // Set a timeout to clear the isConnecting flag if onopen/onerror don't fire
+        // Clear connecting flag after a timeout to prevent deadlocks
         setTimeout(function() {
           isConnecting = false;
-        }, 5000);
+        }, 2000);
         
-        // Set a connection timeout
-        connectionTimer = setTimeout(function() {
-          if (socket && socket.readyState !== WebSocket.OPEN) {
-            console.log('[DEBUG] Connection timeout - socket not open after', CONNECTION_TIMEOUT, 'ms');
-            try {
-              // Force close and wait before triggering reconnect
-              socket.close();
-              // Add a short delay before reconnect to ensure clean state
-              setTimeout(function() {
-                handleReconnect();
-              }, 1000);
-            } catch (e) {
-              console.error('[DEBUG] Error closing timed out socket:', e);
-              // If close fails, manually trigger reconnection
-              handleReconnect();
-            }
-          }
-        }, CONNECTION_TIMEOUT);
-        
-        // WebSocket event handlers
-        socket.onopen = function(e) {
-          console.log('[DEBUG] WebSocket connection established successfully');
-          // Clear connection timeout
-          if (connectionTimer) {
-            clearTimeout(connectionTimer);
-            connectionTimer = null;
-          }
-          reconnectAttempts = 0; // Reset reconnect attempts on successful connection
-          socketReady = true;
-          isConnecting = false; // Clear connection in progress flag
-          updateConnectionStatus('connected');
-          
-          // Send any pending messages
-          if (pendingMessages.length > 0) {
-            console.log(`[DEBUG] Sending ${pendingMessages.length} pending messages`);
-            pendingMessages.forEach(msgObj => {
-              try {
-                socket.send(JSON.stringify(msgObj));
-                console.log('[DEBUG] Sent pending message:', msgObj.content.substring(0, 20) + '...');
-              } catch (e) {
-                console.error('[DEBUG] Error sending pending message:', e);
-              }
-            });
-            // Clear pending messages after sending
-            pendingMessages = [];
-          }
-        };
-        
-        // Handle connection errors
-        socket.onerror = function(e) {
-          console.error('[DEBUG] WebSocket error occurred:', e);
-          socketReady = false;
-          updateConnectionStatus('error');
-        };
-        
-        // Handle disconnection
-        socket.onclose = function(e) {
-          console.log('[DEBUG] WebSocket connection closed:', e.code, e.reason);
-          // Clear connection timeout if it exists
-          if (connectionTimer) {
-            clearTimeout(connectionTimer);
-            connectionTimer = null;
-          }
-          socketReady = false;
-          isConnecting = false; // Clear connection in progress flag
-          updateConnectionStatus('disconnected');
-          
-          // Call the reconnect handler with a delay to prevent immediate reconnection
-          setTimeout(function() {
-            handleReconnect();
-          }, 500);
-        };
-        
-        // Function to handle reconnection with backoff
-        function handleReconnect() {
-          // Reset connection state flags if they were stuck
-          if (isConnecting) {
-            console.log('[DEBUG] Connection flag was stuck, resetting');
-            isConnecting = false;
-          }
-          
-          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            reconnectAttempts++;
-            // Calculate delay with exponential backoff, capped at MAX_RECONNECT_DELAY
-            const delay = Math.min(
-              RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1), // Use exponential backoff with base 2
-              MAX_RECONNECT_DELAY
-            );
-            
-            console.log(`[DEBUG] Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
-            // Display reconnection info to user
-            updateConnectionStatus('reconnecting');
-            
-            // Use a local flag to avoid reconnection loops
-            let reconnecting = true;
-            
-            // Clear any existing reconnection timers
-            if (reconnectTimer) {
-              clearTimeout(reconnectTimer);
-            }
-            
-            // Schedule reconnection with the calculated delay
-            reconnectTimer = setTimeout(function() {
-              if (reconnecting) {
-                reconnecting = false;
-                // Make sure socket is null or closed before reconnecting
-                if (socket) {
-                  if (socket.readyState !== WebSocket.CLOSED && socket.readyState !== WebSocket.CLOSING) {
-                    try {
-                      socket.close();
-                    } catch (e) {
-                      console.error('[DEBUG] Error closing socket during reconnect:', e);
-                    }
-                  }
-                  // Set to null to ensure clean state
-                  socket = null;
-                }
-                connectWebSocket();
-              }
-            }, delay);
-          } else {
-            console.log('[DEBUG] Maximum reconnection attempts reached. Please refresh the page.');
-            updateConnectionStatus('failed');
-          }
-        }
+        // Setup socket event handlers
+        setupSocketHandlers();
       } catch (error) {
         console.error('[DEBUG] Error creating WebSocket connection:', error);
         socketReady = false;
@@ -422,84 +285,143 @@
           setTimeout(connectWebSocket, delay);
         }
       }
+    }
     
+    // Handle reconnection logic
+    function handleReconnect() {
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.log('[DEBUG] Max reconnection attempts reached');
+        updateConnectionStatus('failed');
+        return;
+      }
+      
+      reconnectAttempts++;
+      const delay = RECONNECT_DELAY * reconnectAttempts;
+      
+      console.log(`[DEBUG] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+      updateConnectionStatus('reconnecting');
+      
+      // Clear any existing timer
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      
+      // Set new timer for reconnection
+      reconnectTimer = setTimeout(function() {
+        connectWebSocket();
+      }, delay);
+    }
+    
+    // Setup all WebSocket event handlers
+    function setupSocketHandlers() {
+      socket.onopen = function(e) {
+        console.log('[DEBUG] WebSocket connection established');
+        socketReady = true;
+        isConnecting = false;
+        reconnectAttempts = 0;
+        updateConnectionStatus('connected');
+        
+        // Send an initial ping
+        try {
+          socket.send(JSON.stringify({type: 'ping'}));
+        } catch (e) {
+          console.error('[DEBUG] Error sending initial ping:', e);
+        }
+        
+        // Process any pending messages
+        processPendingMessages();
+      };
+      
+      // Function to process pending messages
+      function processPendingMessages() {
+        if (pendingMessages.length === 0) return;
+        
+        console.log(`[DEBUG] Processing ${pendingMessages.length} pending messages`);
+        const messagesToSend = [...pendingMessages];
+        pendingMessages = [];
+        
+        // Send messages one by one with a small delay
+        messagesToSend.forEach((msg, index) => {
+          setTimeout(() => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+              try {
+                socket.send(JSON.stringify(msg));
+                console.log('[DEBUG] Sent pending message');
+              } catch (e) {
+                console.error('[DEBUG] Failed to send message:', e);
+                pendingMessages.push(msg);
+              }
+            } else {
+              pendingMessages.push(msg);
+            }
+          }, index * 200);
+        });
+      }
+      
       socket.onmessage = function(event) {
         try {
-          console.log('[DEBUG] WebSocket message received:', event.data);
+          console.log('[DEBUG] Message received');
           const data = JSON.parse(event.data);
           
           // Handle different message types
           switch(data.type) {
             case 'connection_established':
-              console.log('[DEBUG] Connection established, authenticated:', data.authenticated);
+              console.log('[DEBUG] Connection established');
               updateConnectionStatus('connected');
               break;
             case 'shoutbox_message':
-              console.log('[DEBUG] Shoutbox message received - full data:', data);
-              // Using standardized message format
-              if (data.data) {
-                const messageData = data.data;
-                // This is the private forum - only display private messages
-                if (messageData.shoutbox_type === 'private') {
-                  console.log('[DEBUG] Processing private shoutbox message');
-                  addShoutboxMessage(messageData);
-                } else {
-                  console.log('[DEBUG] Ignoring non-private shoutbox message:', messageData.shoutbox_type);
-                }
-              } else {
-                console.warn('[DEBUG] Message missing data.data property, using direct format');
-                // Try to use the data directly
-                const { type, ...messageData } = data;
-                // This is the private forum - only display private messages
-                if (messageData.shoutbox_type === 'private') {
-                  addShoutboxMessage(messageData);
-                }
+              // Extract message data
+              const messageData = data.data || data;
+              // Only display messages for this forum type
+              if (messageData.shoutbox_type === 'private') {
+                addShoutboxMessage(messageData);
               }
               break;
             case 'error':
-              console.error('[DEBUG] Received error message:', data.message);
-              alert('Error: ' + data.message);
+              console.error('[DEBUG] Error:', data.message);
               break;
             case 'online_users':
-              console.log('[DEBUG] Online users update received:', data.data);
               updateOnlineUsers(data.data);
               break;
             case 'pong':
-              console.log('[DEBUG] Pong received');
-              // Pong received, connection is alive
+              // Connection alive confirmation
               break;
             default:
-              console.log('[DEBUG] Unknown message type received:', data.type);
-              break;
+              console.log('[DEBUG] Unknown message type:', data.type);
           }
         } catch (error) {
-          console.error('[DEBUG] Error parsing WebSocket message:', error, '\nRaw data:', event.data);
+          console.error('[DEBUG] Error parsing message:', error);
         }
-      };
-    
-      socket.onclose = function(event) {
-        socketReady = false;
-        updateConnectionStatus('disconnected');
-        
-        // Try to reconnect after a delay
-        setTimeout(connectWebSocket, 3000);
-      };
-    
-      socket.onerror = function(error) {
-        socketReady = false;
-        updateConnectionStatus('error');
       };
       
       // Set up ping interval to keep connection alive
       setInterval(function() {
-        if (socketReady) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
           try {
             socket.send(JSON.stringify({type: 'ping'}));
           } catch (e) {
             // Ignore errors on ping
           }
         }
-      }, 30000); // Send ping every 30 seconds
+      }, 30000);
+      
+      socket.onclose = function(event) {
+        console.log('[DEBUG] WebSocket closed:', event.code, event.reason);
+        socketReady = false;
+        socket = null;
+        updateConnectionStatus('disconnected');
+        
+        // Attempt reconnection if not already connecting
+        if (!isConnecting) {
+          handleReconnect();
+        }
+      };
+      
+      socket.onerror = function(error) {
+        console.error('[DEBUG] WebSocket error');
+        socketReady = false;
+        updateConnectionStatus('error');
+      };
     }
     
     // Function to update connection status indicator
@@ -529,6 +451,10 @@
         case 'failed':
           statusElement.className = 'status-error';
           statusElement.innerText = 'Connection Failed - Refresh Page';
+          break;
+        case 'reconnecting':
+          statusElement.className = 'status-reconnecting';
+          statusElement.innerText = 'Reconnecting...';
           break;
       }
       
@@ -574,7 +500,7 @@
         // Create message HTML
         messageDiv.innerHTML = `
           <div class="message-author">
-            <img src="${message.avatar_url || '/static/images/default-avatar.png'}" alt="${message.display_name || message.username}" class="message-avatar">
+            <img src="${message.avatar_url || '/static/images/default-avatar.png'}" alt="${message.display_name || message.username}" class="message-avatar" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
             <span class="message-username"><a href="/users/${message.username}.${message.user_id}" class="user-profile-link">${message.display_name || message.username}</a></span>
           </div>
           <div class="message-content">${message.message}</div>
@@ -691,15 +617,42 @@
       
       // Check socket connection
       if (!socketReady || !socket || socket.readyState !== WebSocket.OPEN) {
-        console.log('[DEBUG] Socket not ready, storing message for later transmission');
-        // Store message for retransmission when connection is re-established
+        console.log('[DEBUG] Socket not ready, queuing message');
+        // Store message for later transmission
         pendingMessages.push(messageObject);
-        // Try to reconnect
+        
+        // Try to get user's avatar from navbar if available
+        let userAvatarUrl = '/static/images/default-avatar.png';
+        const navbarAvatar = document.querySelector('.nav-avatar img');
+        if (navbarAvatar && navbarAvatar.src) {
+          userAvatarUrl = navbarAvatar.src;
+        }
+        
+        // Create a temporary message to show the user
+        const tempMessage = {
+          id: 'pending-' + Date.now(),
+          user_id: userId,
+          username: username,
+          display_name: displayName || username,
+          avatar_url: userAvatarUrl,
+          message: message + ' (sending...)',
+          created_at: new Date().toISOString(),
+          shoutbox_type: messageType,
+          pending: true
+        };
+        
+        addShoutboxMessage(tempMessage);
+        
+        // If socket is not connecting, try to reconnect
         if (!isConnecting) {
           connectWebSocket();
         }
+        
         // Let the user know we're trying to send their message
         updateConnectionStatus('reconnecting');
+        
+        // Clear input field still - message is saved for later
+        messageInput.value = '';
         return;
       }
       

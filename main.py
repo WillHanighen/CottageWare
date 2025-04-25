@@ -1668,20 +1668,29 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
     """
     Handles WebSocket connections for real-time updates.
     """
-    # Accept the connection first
-    await websocket.accept()
-    print("[DEBUG] WebSocket connection accepted")
+    # Add connection status tracking
+    connection_accepted = False
     
-    # Add a small delay after accepting to ensure connection stabilizes
-    await asyncio.sleep(0.5)
-    
-    # Try to get token and user info from query params
-    query_params = websocket.query_params
-    token = query_params.get("token") if query_params else None
-    user_id = query_params.get("user_id") if query_params else None
-    username = query_params.get("username") if query_params else None
-    
-    print(f"[DEBUG] Query params: token={token[:10] if token else 'None'}, user_id={user_id}, username={username}")
+    try:
+        # Accept the connection first
+        await websocket.accept()
+        connection_accepted = True
+        print("[DEBUG] WebSocket connection accepted")
+        
+        # Add a small delay after accepting to ensure connection stabilizes
+        await asyncio.sleep(0.5)
+        
+        # Try to get token and user info from query params
+        query_params = websocket.query_params
+        token = query_params.get("token") if query_params else None
+        user_id = query_params.get("user_id") if query_params else None
+        username = query_params.get("username") if query_params else None
+        
+        print(f"[DEBUG] Query params: token={token[:10] if token else 'None'}, user_id={user_id}, username={username}")
+    except Exception as e:
+        print(f"[DEBUG] Error in initial WebSocket setup: {e}")
+        if not connection_accepted:
+            return  # Exit early if we couldn't even accept the connection
     
     # Get user from token if provided
     user = None
@@ -1728,29 +1737,43 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
     connection_id = id(websocket)
     connection_info = {"websocket": websocket, "user": user, "id": connection_id}
     
-    # Before adding, handle existing connections more carefully
-    # Instead of removing all connections for the same user, just handle duplicate by connection ID
-    for i, conn in enumerate(active_connections[:]):
-        if conn.get("id") == connection_id:
-            # This is a true duplicate connection object (should be rare)
+    # Handle existing connections with more caution
+    # Handle multiple connections from the same user more carefully
+    # Instead of always closing old connections, allow multiple connections
+    # but close any that seem stale or problematic
+    if user:
+        stale_connections = []
+        for i, conn in enumerate(active_connections[:]):
+            if conn.get("user") and conn.get("user").id == user.id and conn.get("id") != connection_id:
+                try:
+                    # Check if connection seems stale
+                    ws_state = conn["websocket"].client_state
+                    if ws_state == WebSocketState.DISCONNECTED:
+                        stale_connections.append(conn)
+                    elif ws_state != WebSocketState.CONNECTED:
+                        # Connection in a transition state, mark for cleanup
+                        stale_connections.append(conn)
+                except Exception as e:
+                    print(f"[DEBUG] Error checking connection state: {e}")
+                    # If we can't check the state, assume it's stale
+                    stale_connections.append(conn)
+        
+        # Clean up stale connections
+        for conn in stale_connections:
             try:
-                # Try to close the old connection if it's still open
-                if conn["websocket"].client_state != WebSocketState.DISCONNECTED:
-                    await conn["websocket"].close(code=1001, reason="Replaced by new connection")
-                    # Add a small delay to ensure the connection closes properly
-                    await asyncio.sleep(0.2)
+                print(f"[DEBUG] Cleaning up stale connection for user {user.username}")
+                try:
+                    # Try to close, but don't worry if it fails
+                    await conn["websocket"].close(code=1001, reason="Stale connection")
+                except Exception:
+                    pass
+                
+                # Remove from active list
+                if conn in active_connections:
+                    active_connections.remove(conn)
             except Exception as e:
-                print(f"[DEBUG] Error closing duplicate connection: {e}")
-            
-            # Remove the old connection
-            try:
-                active_connections.remove(conn)
-                print(f"[DEBUG] Removed duplicate connection with same ID")
-            except ValueError:
-                pass
-            break  # Only remove the exact duplicate
+                print(f"[DEBUG] Error cleaning up stale connection: {e}")
     
-    # Just log existing connections for the same user without closing them
     # Let clients manage their own connections
     if user:
         existing_connections = [c for c in active_connections if c.get("user") and c.get("user").id == user.id]
@@ -1759,184 +1782,127 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
     
     # Add the new connection
     active_connections.append(connection_info)
-    print(f"[DEBUG] Active connections: {len(active_connections)}")
-    print(f"[DEBUG] Connection IDs: {[id(conn['websocket']) for conn in active_connections]}")
+    print(f"[DEBUG] Added connection to active_connections, now have {len(active_connections)}")
     
-    # Send immediate confirmation to client
+    # Add a short delay before sending initial messages
+    # This helps ensure the client is ready to receive
+    await asyncio.sleep(0.2)
+    
+    # Send connection confirmation
     try:
-        # Add a small delay before sending first message to ensure socket is ready
+        await websocket.send_json({
+            "type": "connection_established",
+            "authenticated": user is not None,
+            "username": user.username if user else None,
+            "user_id": user.id if user else None
+        })
+        print("[DEBUG] Sent connection confirmation")
+        
+        # Wait a bit more before broadcasting to all clients
         await asyncio.sleep(0.2)
         
-        # Check if socket is still connected before sending
-        if websocket.client_state == WebSocketState.CONNECTED:
-            await websocket.send_json({"type": "connection_established", "authenticated": user is not None, "connection_id": connection_id})
-            print(f"[DEBUG] Sent connection established message, authenticated={user is not None}, connection_id={connection_id}")
-        else:
-            print(f"[DEBUG] Socket not connected when trying to send initial message")
-            return
+        # Update online users list
+        await broadcast_online_users()
+        print("[DEBUG] Broadcasted online users after connection")
     except Exception as e:
-        print(f"[DEBUG] Error sending connection established message: {e}")
-        return  # Exit early if we can't even send the initial message
+        print(f"[DEBUG] Error in initial communication: {e}")
     
-    # Send online users list
-    await broadcast_online_users()
-    
+    # Wait for messages in a loop
     try:
-        # Set up ping/pong heartbeat timer
-        last_ping_time = time.time()
-        ping_interval = 30  # seconds
-        
-        # Main message processing loop
         while True:
-            # Check if it's time to send a ping
-            current_time = time.time()
-            if current_time - last_ping_time > ping_interval:
-                try:
-                    if websocket.client_state == WebSocketState.CONNECTED:
-                        await websocket.send_json({"type": "ping"})
-                        last_ping_time = current_time
-                except Exception:
-                    # If ping fails, exit the loop to clean up the connection
-                    break
+            data = await websocket.receive_text()
+            print(f"[DEBUG] Received message: {data[:100]}...")
             
-            # Receive and process messages
             try:
-                data = await asyncio.wait_for(websocket.receive_json(), timeout=1.0)
-                message_type = data.get("type")
-                print(f"[DEBUG] Received message type: {message_type}")
+                json_data = json.loads(data)
+                message_type = json_data.get('type', '')
                 
                 # Handle different message types
-                if message_type == "ping":
-                    await websocket.send_json({"type": "pong"})
-                    print("[DEBUG] Responded to ping with pong")
+                if message_type == 'ping':
+                    # Respond to ping with pong
+                    await websocket.send_json({'type': 'pong'})
+                    print("[DEBUG] Sent pong response")
                     
-                elif message_type == "shoutbox_message":
-                    content = data.get("content", "").strip()
-                    # Get user ID and username directly from the message
-                    message_user_id = data.get("user_id")
-                    message_username = data.get("username")
-                    # Get shoutbox type (public or private)
-                    shoutbox_type = data.get("shoutbox_type", "public")
+                elif message_type == 'shoutbox_message':
+                    # Process shoutbox message
+                    content = json_data.get('content', '').strip()
+                    sender_id = int(json_data.get('user_id', 0)) if json_data.get('user_id') else None
+                    sender_username = json_data.get('username')
+                    shoutbox_type = json_data.get('shoutbox_type', 'public')
                     
-                    print(f"[DEBUG] Received {shoutbox_type} shoutbox message: {content[:50]}{'...' if len(content) > 50 else ''}")
-                    print(f"[DEBUG] Message claims to be from user ID: {message_user_id}")
+                    print(f"[DEBUG] Shoutbox message: {content[:50]}... from {sender_username} (ID: {sender_id}), type: {shoutbox_type}")
                     
-                    # Process message if it has content and user information
-                    if content and message_user_id and message_username:
-                        try:
-                            # Verify user exists in database (security step)
-                            message_user = db.query(User).filter(User.id == message_user_id).first()
-                            
-                            if not message_user:
-                                print(f"[DEBUG] User not found for user_id: {message_user_id}")
-                                await websocket.send_json({
-                                    "type": "error",
-                                    "message": "Invalid user information. Please refresh the page and try again."
-                                })
-                                return
-                            
-                            # Check if user has access to private shoutbox if message is for private shoutbox
-                            if shoutbox_type == "private" and (
-                                not message_user.profile or 
-                                message_user.profile.account_tier < 2
-                            ):
-                                print(f"[DEBUG] User {message_user.username} does not have access to private shoutbox")
-                                await websocket.send_json({
-                                    "type": "error",
-                                    "message": "You do not have access to the private shoutbox."
-                                })
-                                return
-                                
-                            # Filter offensive content
-                            is_clean, filtered_content, _ = filter_offensive_content(content)
-                            if not is_clean:
-                                print(f"[DEBUG] Message filtered for offensive content")
-                            
-                            # Print authenticated user information for debugging
-                            print(f"[DEBUG] Creating {shoutbox_type} message for verified user: {message_user.username} (ID: {message_user.id})")
-                            
-                            try:
-                                # Create new shoutbox message with the verified user ID and shoutbox type
-                                new_message = Shoutbox(
-                                    user_id=message_user.id,
-                                    message=filtered_content,
-                                    shoutbox_type=shoutbox_type
-                                )
-                                db.add(new_message)
-                                db.commit()
-                                db.refresh(new_message)  # Refresh to get the ID and created_at timestamp
-                                print(f"[DEBUG] Saved new {shoutbox_type} shoutbox message with ID: {new_message.id} from user {message_user.username}")
-                                
-                                # Broadcast the message to all clients
-                                await broadcast_shoutbox_message(new_message, db)
-                                
-                                # Send confirmation back to the sender
-                                await websocket.send_json({
-                                    "type": "message_confirmation",
-                                    "message_id": new_message.id,
-                                    "status": "success"
-                                })
-                            except Exception as e:
-                                print(f"[DEBUG] Error saving shoutbox message: {e}")
-                                # Send error back to the sender
-                                await websocket.send_json({
-                                    "type": "error",
-                                    "message": "Error saving your message. Please try again."
-                                })
-                        except Exception as e:
-                            print(f"[DEBUG] Error processing shoutbox message: {e}")
-                    else:
-                        missing = []
-                        if not content: missing.append("content")
-                        if not message_user_id: missing.append("user ID")
-                        if not message_username: missing.append("username")
+                    if content and sender_id and sender_username:
+                        # Verify the sender ID matches the connected user
+                        is_authorized = False
                         
-                        print(f"[DEBUG] Rejected incomplete message, missing: {', '.join(missing)}")
-                        # Send rejection message back to the client
-                        try:
+                        if user and user.id == sender_id and user.username == sender_username:
+                            is_authorized = True
+                        
+                        if is_authorized:
+                            # Filter offensive content (basic implementation)
+                            filtered_content = content
+                            # could add filtering logic here if needed
+                            
+                            # Save to database
+                            new_message = Shoutbox(
+                                user_id=sender_id,
+                                message=filtered_content,
+                                shoutbox_type=shoutbox_type
+                            )
+                            db.add(new_message)
+                            db.commit()
+                            db.refresh(new_message)
+                            print(f"[DEBUG] Saved {shoutbox_type} shoutbox message from {sender_username} (ID: {new_message.id})")
+                            
+                            # Broadcast to all users
+                            await broadcast_shoutbox_message(new_message, db)
+                        else:
+                            print(f"[DEBUG] Unauthorized message attempt from {sender_username} claiming to be {sender_id}")
                             await websocket.send_json({
-                                "type": "error",
-                                "message": "Incomplete message data. Please refresh the page and try again."
+                                'type': 'error',
+                                'message': 'Unauthorized message attempt'
                             })
-                        except Exception as e:
-                            print(f"[DEBUG] Error sending rejection message: {e}")
-            except asyncio.TimeoutError:
-                # This is expected - we use a short timeout to allow for the ping check
-                continue
-            except WebSocketDisconnect:
-                print(f"WebSocket disconnected normally: connection_id={connection_id}")
-                break
-            except Exception as e:
-                print(f"Error receiving WebSocket message: {e}")
-                break
-    except WebSocketDisconnect:
-        print(f"WebSocket disconnected outside message loop: connection_id={connection_id}")
-    except Exception as e:
-        print(f"WebSocket error: {e}, connection_id={connection_id}")
-    finally:
-        # Remove from active connections
-        try:
-            # Find this specific connection (using the unique connection_id)
-            for i, conn in enumerate(active_connections[:]):
-                if conn.get("id") == connection_id:
-                    active_connections.remove(conn)
-                    print(f"Removed connection {connection_id}, remaining: {len(active_connections)}")
-                    break
+                    else:
+                        print(f"[DEBUG] Invalid shoutbox message format: {json_data}")
+                else:
+                    print(f"[DEBUG] Unknown message type: {message_type}")
             
-            # Try to close the connection if it's not already closed
+            except json.JSONDecodeError:
+                print(f"[DEBUG] Error decoding JSON from message: {data[:100]}...")
+            except Exception as e:
+                print(f"[DEBUG] Error processing message: {e}")
+    
+    except WebSocketDisconnect as e:
+        print(f"[DEBUG] WebSocket disconnected with code {e.code}")
+    except ConnectionClosedOK:
+        print("[DEBUG] Connection closed normally")
+    except Exception as e:
+        print(f"[DEBUG] WebSocket connection error: {e}")
+    finally:
+        # Clean up connection on disconnect
+        try:
+            if connection_info in active_connections:
+                active_connections.remove(connection_info)
+                print(f"[DEBUG] Removed connection from active_connections, now have {len(active_connections)}")
+            
+            # Add a short delay before broadcasting disconnect
+            await asyncio.sleep(0.2)
+            
+            # Update online users after disconnect
+            await broadcast_online_users()
+            print("[DEBUG] Broadcasted online users after disconnect")
+            
+        except Exception as e:
+            print(f"[DEBUG] Error in disconnection cleanup: {e}")
+        
+        # If we accepted the connection but never properly closed it, close it now
+        if connection_accepted and websocket.client_state != WebSocketState.DISCONNECTED:
             try:
-                if websocket.client_state != WebSocketState.DISCONNECTED:
-                    await websocket.close()
+                await websocket.close()
+                print("[DEBUG] Closed websocket connection in finally block")
             except Exception as e:
                 print(f"[DEBUG] Error closing websocket in cleanup: {e}")
-                
-            # Broadcast updated online users list
-            try:
-                await broadcast_online_users()
-            except Exception as e:
-                print(f"[DEBUG] Error broadcasting online users: {e}")
-        except Exception as e:
-            print(f"Error in cleanup: {e}")
 
 # Function to broadcast messages to all connected WebSocket clients
 async def broadcast_message(message_type: str, data: dict):
