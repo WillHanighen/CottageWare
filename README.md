@@ -71,15 +71,7 @@ CottageWare is a comprehensive web forum and e-commerce platform built with Fast
    GOOGLE_CLIENT_SECRET=your_google_client_secret
    ```
 
-5. Initialize the database:
-   ```
-   python seed_db.py
-   ```
-
-6. Create an admin user:
-   ```
-   python create_admin.py
-   ```
+5. The database will be automatically initialized when you first run the application
 
 ## Running the Application
 
@@ -103,8 +95,7 @@ The admin panel is accessible at `/admin` for users with admin privileges (tier 
 - `database.py`: Database configuration
 - `utils.py`: Utility functions
 - `templates/`: HTML templates
-- `static/`: CSS, JavaScript, and other static files
-- `content/`: User-uploaded content
+- `static/`: CSS, JavaScript, user-uploaded content, and other static files (including site imagery)
 
 ## WebSocket Features
 
