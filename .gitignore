@@ -46,7 +46,8 @@ service-account.json
 # Database
 *.sqlite3
 *.sqlite3-journal
-*.db
+# *.db
+# remove above comment once ready for production
 *.sql
 *.dump
 
