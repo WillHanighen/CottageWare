@@ -18,3 +18,4 @@ python-dotenv
 fastapi-sso
 markdown
 bleach
+psycopg2-binary
