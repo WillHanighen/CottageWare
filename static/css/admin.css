@@ -1,6 +1,7 @@
 /* Admin Panel Styles */
 :root {
-  --admin-primary: #00a8ff;
+  /* --admin-primary: #00a8ff; */
+  --admin-primary: #ffffff;
   --admin-primary-light: #4dc4ff;
   --admin-primary-dark: #0076b3;
   --admin-secondary: #6c757d;
