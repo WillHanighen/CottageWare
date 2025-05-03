@@ -1129,12 +1129,13 @@ async def login_page(request: Request, current_user: User = Depends(get_optional
 
 # Login form submission
 @app.post("/login")
-async def login(request: Request, response: JSONResponse, username: str = Form(...), password: str = Form(...), g_recaptcha_response: str = Form(None), db: Session = Depends(get_db)):
+async def login(request: Request, response: JSONResponse, username: str = Form(...), password: str = Form(...), 
+        cf_turnstile_response: str = Form(None, alias="cf-turnstile-response"), db: Session = Depends(get_db)):
     """
     Handles login form submission.
     """
     # Verify Turnstile
-    if not verify_turnstile(g_recaptcha_response):
+    if not verify_turnstile(cf_turnstile_response):
         return templates.TemplateResponse(
             "login.html", 
             {"request": request, "error": "Please complete the CAPTCHA verification", "current_user": None, "turnstile_site_key": TURNSTILE_SITE_KEY},
@@ -1192,12 +1193,13 @@ async def register_page(request: Request, current_user: User = Depends(get_optio
 
 # Register form submission
 @app.post("/register")
-async def register(request: Request, username: str = Form(...), email: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), g_recaptcha_response: str = Form(None), db: Session = Depends(get_db)):
+async def register(request: Request, username: str = Form(...), email: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), 
+                  cf_turnstile_response: str = Form(None, alias="cf-turnstile-response"), db: Session = Depends(get_db)):
     """
     Handles registration form submission.
     """
     # Verify Turnstile
-    if not verify_turnstile(g_recaptcha_response):
+    if not verify_turnstile(cf_turnstile_response):
         return templates.TemplateResponse(
             "register.html", 
             {"request": request, "error": "Please complete the CAPTCHA verification", "current_user": None, "turnstile_site_key": TURNSTILE_SITE_KEY},
