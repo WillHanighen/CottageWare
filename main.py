@@ -47,13 +47,12 @@ from utils import validate_discord_username, validate_display_name, filter_offen
 
 # Import requests for reCAPTCHA verification
 import requests
+import urllib.parse
 
 # Load environment variables
 load_dotenv()
 
-# Cloudflare Turnstile configuration
-TURNSTILE_SITE_KEY = os.getenv('TURNSTILE_SITE_KEY', '1x00000000000000000000AA')  # Test key
-TURNSTILE_SECRET_KEY = os.getenv('TURNSTILE_SECRET_KEY', '1x0000000000000000000000000000000AA')  # Test key
+# Cloudflare configuration removed
 
 # Creating a new FastAPI instance
 app = FastAPI(debug=True, title="CottageWare")
@@ -80,27 +79,7 @@ templates = Jinja2Templates(directory="templates")
 # Creating all tables in the database
 Base.metadata.create_all(bind=engine)
 
-# Cloudflare Turnstile verification function
-def verify_turnstile(turnstile_response):
-    """
-    Verifies a Turnstile response with Cloudflare's Turnstile API.
-    Returns True if verification succeeds, False otherwise.
-    """
-    if not turnstile_response:
-        return False
-        
-    data = {
-        'secret': TURNSTILE_SECRET_KEY,
-        'response': turnstile_response
-    }
-    
-    try:
-        response = requests.post('https://challenges.cloudflare.com/turnstile/v0/siteverify', data=data)
-        result = response.json()
-        return result.get('success', False)
-    except Exception as e:
-        print(f"Turnstile verification error: {e}")
-        return False
+# Cloudflare Turnstile verification and Email functions removed
 
 # Route for robots.txt
 @app.get("/robots.txt", include_in_schema=False)
@@ -235,14 +214,30 @@ async def terms_of_service(request: Request, current_user: User = Depends(get_op
     )
 
 @app.get("/contact-us", response_class=HTMLResponse)
-async def contact_us(request: Request, current_user: User = Depends(get_optional_user)):
+async def contact_us(request: Request, error_message: str = None, current_user: User = Depends(get_optional_user)):
     """
     Handles GET requests to the /contact-us URL.
     Displays the contact us page with support, legal, and privacy contact information.
     """
-    return templates.TemplateResponse(
-        "contact_us.html",
-        {"request": request, "current_user": current_user, "turnstile_site_key": TURNSTILE_SITE_KEY}
+    context = {
+        "request": request,
+        "current_user": current_user
+    }
+    
+    if error_message:
+        context["error"] = error_message
+        
+    return templates.TemplateResponse("contact_us.html", context)
+
+@app.post("/contact-us", response_class=RedirectResponse)
+async def contact_us_redirect(request: Request):
+    """
+    Handles POST requests to the /contact-us URL.
+    The contact form has been removed, so redirect to the GET version with an error message.
+    """
+    return RedirectResponse(
+        url="/contact-us?error=The+contact+form+has+been+removed.+Please+email+us+directly.", 
+        status_code=303
     )
 
 # Health check endpoint

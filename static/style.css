@@ -1051,6 +1051,7 @@ footer p {
 .stat .label {
   font-size: 12px;
   color: #999;
+  display: flex;
 }
 
 .stat .value {

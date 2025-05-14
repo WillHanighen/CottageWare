@@ -7,11 +7,11 @@
     <title>Contact Us - CottageWare</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/css/policy.css">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <!-- Removed Cloudflare Turnstile script -->
 </head>
 <body>
     {% include "includes/navbar.html" %}
-    <h1>THIS PAGE IS NOT FINISHED AND LISTED EMAIL ADDRESSES ARE NOT VALID, DO NOT EXPECT RESPONSES</h1>
+
     <div class="container policy-container">
         <h1>Contact Us</h1>
         <p class="last-updated">Last Updated: April 22, 2025</p>
@@ -23,44 +23,26 @@
             <h2>Support</h2>
             <p>For technical assistance, account issues, or general questions about using CottageWare:</p>
             <ul>
-                <li><strong>Email:</strong> <a href="mailto:support@cottageware.com">support@cottageware.com</a></li>
+                <li><strong>Email:</strong> <a href="mailto:support@cottageware.cottage-dev.net" target="_blank" rel="noopener noreferrer">support@cottageware.cottage-dev.net</a></li>
                 <li><strong>Response Time:</strong> We only check messages a few times a week. Please allow 4–7 days for a response.</li>
             </ul>
             
-            <div class="contact-form-container">
-                <h3>Support Request Form</h3>
-                <form id="support-form" class="contact-form">
-                    <div class="form-group">
-                        <label for="name">Your Name</label>
-                        <input type="text" id="name" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email Address</label>
-                        <input type="email" id="email" name="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="subject">Subject</label>
-                        <input type="text" id="subject" name="subject" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="message">Message</label>
-                        <textarea id="message" name="message" rows="5" required></textarea>
-                    </div>
-                    <div class="form-group captcha-container">
-                        <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-theme="dark"></div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <button type="submit" class="btn-primary">Submit Support Request</button>
-                    </div>
-                </form>
+            <div class="contact-info-container">
+                {% if error %}
+                <div class="alert alert-warning">
+                    <p><strong>{{ error }}</strong></p>
+                </div>
+                {% endif %}
+                <div class="alert alert-info">
+                    <p>Please email us directly at the address above for any support requests.</p>
+                </div>
             </div>
         </div>
         <div class="policy-section">
             <h2>Legal Inquiries</h2>
             <p>For legal questions, partnership opportunities, or business-related matters:</p>
             <ul>
-                <li><strong>Email:</strong> <a href="mailto:legal@cottageware.com">legal@cottageware.com</a></li>
+                <li><strong>Email:</strong> <a href="mailto:legal@cottageware.cottage-dev.net" target="_blank" rel="noopener noreferrer">legal@cottageware.cottage-dev.net</a></li>
                 <li><strong>Business Hours:</strong> We only check messages a few times a week. Please allow 4–7 days for a response.</li>
             </ul>
         </div>
@@ -68,7 +50,7 @@
             <h2>Privacy Concerns</h2>
             <p>For questions about our Privacy Policy, data handling practices, or to exercise your data rights:</p>
             <ul>
-                <li><strong>Email:</strong> <a href="mailto:privacy@cottageware.com">privacy@cottageware.com</a></li>
+                <li><strong>Email:</strong> <a href="mailto:privacy@cottageware.cottage-dev.net" target="_blank" rel="noopener noreferrer">privacy@cottageware.cottage-dev.net</a></li>
                 <li><strong>Data Requests:</strong> To request access to your personal data or exercise other privacy rights, please include "Data Subject Request" in your email subject line.</li>
             </ul>
         </div>
@@ -76,7 +58,7 @@
             <h2>Report Abuse</h2>
             <p>To report violations of our Terms of Service, inappropriate content, or security vulnerabilities:</p>
             <ul>
-                <li><strong>Email:</strong> <a href="mailto:abuse@cottageware.com">abuse@cottageware.com</a></li>
+                <li><strong>Email:</strong> <a href="mailto:abuse@cottageware.cottage-dev.net" target="_blank" rel="noopener noreferrer">abuse@cottageware.cottage-dev.net</a></li>
                 <li><strong>Urgent Issues:</strong> For time-sensitive security concerns, please mark your email as "URGENT" in the subject line.</li>
             </ul>
         </div>
@@ -84,30 +66,12 @@
             <h2>Feedback and Suggestions</h2>
             <p>We value your input on how we can improve CottageWare. To share your ideas or feedback:</p>
             <ul>
-                <li><strong>Email:</strong> <a href="mailto:feedback@cottageware.com">feedback@cottageware.com</a></li>
+                <li><strong>Email:</strong> <a href="mailto:feedback@cottageware.cottage-dev.net" target="_blank" rel="noopener noreferrer">feedback@cottageware.cottage-dev.net</a></li>
                 <li>You can also provide feedback through our forums in the designated feedback section.</li>
             </ul>
         </div>
     </div>
     {% include "includes/footer.html" %}
-    <script>
-        // Simple form submission handler
-        document.getElementById('support-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Check if Turnstile is completed
-            const turnstileResponse = turnstile.getResponse();
-            if (!turnstileResponse) {
-                alert('Please complete the CAPTCHA verification.');
-                return;
-            }
-            
-            // In a real implementation, this would send the form data to a server
-            // including the turnstileResponse for server-side verification
-            alert('Thank you for your message. Our support team will contact you shortly.');
-            this.reset();
-            turnstile.reset();
-        });
-    </script>
+    <!-- Contact form scripts removed -->
 </body>
 </html>
