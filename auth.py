@@ -34,8 +34,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 google_sso = GoogleSSO(
     client_id=os.getenv("GOOGLE_CLIENT_ID", ""),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET", ""),
-    redirect_uri=os.getenv("GOOGLE_REDIRECT_URI", ""),
-    allow_insecure_http=True
+    redirect_uri=os.getenv("GOOGLE_REDIRECT_URI", "https://cottageware.cottage-dev.net/auth/google/callback"),
+    allow_insecure_http=False
 )
 
 # Dependency to get the DB session
