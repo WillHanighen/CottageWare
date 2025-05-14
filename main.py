@@ -52,7 +52,29 @@ import urllib.parse
 # Load environment variables
 load_dotenv()
 
-# Cloudflare configuration removed
+# Cloudflare Turnstile configuration
+TURNSTILE_SITE_KEY = os.getenv('TURNSTILE_SITE_KEY', '')
+TURNSTILE_SECRET_KEY = os.getenv('TURNSTILE_SECRET_KEY', '')
+
+# Cloudflare Turnstile verification function
+def verify_turnstile(turnstile_response):
+    """Verify Cloudflare Turnstile response"""
+    if not TURNSTILE_SECRET_KEY or not turnstile_response:
+        # If no secret key is configured or no response provided, skip verification in development
+        return True
+        
+    data = {
+        'secret': TURNSTILE_SECRET_KEY,
+        'response': turnstile_response
+    }
+    
+    try:
+        resp = requests.post('https://challenges.cloudflare.com/turnstile/v0/siteverify', data=data)
+        result = resp.json()
+        return result.get('success', False)
+    except Exception as e:
+        print(f"Turnstile verification error: {e}")
+        return False
 
 # Creating a new FastAPI instance
 app = FastAPI(debug=True, title="CottageWare")
