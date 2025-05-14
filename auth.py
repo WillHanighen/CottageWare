@@ -35,7 +35,7 @@ google_sso = GoogleSSO(
     client_id=os.getenv("GOOGLE_CLIENT_ID", ""),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET", ""),
     redirect_uri=os.getenv("GOOGLE_REDIRECT_URI", ""),
-    allow_insecure_http=True  # Only for development
+    allow_insecure_http=False
 )
 
 # Dependency to get the DB session
